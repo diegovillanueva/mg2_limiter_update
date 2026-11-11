@@ -65,8 +65,11 @@ cd /path/to/cases/niesing && ./case.build && ./case.submit
 ## ✅🧪 Validation
 
 🩹✅ The patches apply cleanly to a clean `cam_cesm2_1_rel_60` checkout, and the patched files are byte-identical to the CAM `dv_diag` state used for the letter (commit `e3bd85da`).
-🏗️✅ A CESM 2.1.5 F2000climo f09 case (DustOnly-NieSing) builds successfully from a tree prepared with `apply_patches.sh` and `create_case.sh`.
-⏳🧪 The short smoke run and the namelist checks for all seven runs are still in progress; this section will be updated with the results.
+🏗️✅ A CESM 2.1.5 F2000climo f09_g17 case (DustOnly-NieSing) builds from a tree prepared with `apply_patches.sh` and `create_case.sh` (Euler, Intel, 512 tasks); the build log compiles the patched `micro_dv_nml.F90`.
+🧾✅ `preview_namelists` for all seven cases: sorted `atm_in` equals the archived letter cases except `limfacdu` 0.051 → 0.05 (Default-NoCap, DustOnly-Weak, DustOnly-NieSing, DustOnly-NieCont); Default, DustOnly-Cap and DustOnly-Strong are identical.
+🏃✅ A 5-day smoke run of DustOnly-NieSing finished (`case.run success`, 6.7 min on 4 nodes): `atm_in` has `limfacdu = 0.05` and `limfacdu_niemand_singular = .true.`, h1–h4 files are written daily, and `FRZIMM_PATH` and `ICNUMC` are finite everywhere (h0 is monthly and not reached in 5 days).
+🧭⚠️ Use `--res f09_g17` (as `create_case.sh` does): `f09_f09_mg17` gives a different hybrid start and initial file. If the CESM tree has externals that are not SVN/git checkouts, `case.build --skip-provenance-check` is needed.
+🔐🧮 `SHA256SUMS` lists the checksums of all distributed files (`sha256sum -c SHA256SUMS`).
 🧾⚠️ No numerical comparison with the archived letter runs is made: those runs used `limfacdu = 0.051` (here 0.05) and some were built from intermediate code states.
 
 ## ⚖️📚 Licence and citation
