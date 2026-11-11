@@ -64,7 +64,10 @@ cd /path/to/cases/niesing && ./case.build && ./case.submit
 
 ## ✅🧪 Validation
 
-VALIDATION_PLACEHOLDER
+🩹✅ The patches apply cleanly to a clean `cam_cesm2_1_rel_60` checkout, and the patched files are byte-identical to the CAM `dv_diag` state used for the letter (commit `e3bd85da`).
+🏗️✅ A CESM 2.1.5 F2000climo f09 case (DustOnly-NieSing) builds successfully from a tree prepared with `apply_patches.sh` and `create_case.sh`.
+⏳🧪 The short smoke run and the namelist checks for all seven runs are still in progress; this section will be updated with the results.
+🧾⚠️ No numerical comparison with the archived letter runs is made: those runs used `limfacdu = 0.051` (here 0.05) and some were built from intermediate code states.
 
 ## ⚖️📚 Licence and citation
 
