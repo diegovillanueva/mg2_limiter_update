@@ -1,0 +1,8 @@
+run	hclas_du_imm	enable_nimax	limfacdu	dust_inp_scheme	limfacdu_archived	archived_case
+Default	default	.true.	default	classical	default	cesm215.F2000climo.Sppe_ori_h1_ndg
+Default-NoCap	default	.false.	0.05	classical	0.051	cesm215.F2000climo.Sppe_ori_h1_nolimit_ndg
+DustOnly-Cap	1	.true.	default	classical	default	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_limit_ndg
+DustOnly-Weak	1	.false.	0.05	classical	0.051	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_ndg
+DustOnly-Strong	1	.false.	0.0000625	classical	0.0000625	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_lim_du5pd800_ndg
+DustOnly-NieSing	1	.false.	0.05	niemand_singular	0.051	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_lim_du5pd1_niesing_max100_ndg
+DustOnly-NieCont	1	.false.	0.05	niemand_continuous	0.051	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_lim_du5pd1_niecont_max100_ndg

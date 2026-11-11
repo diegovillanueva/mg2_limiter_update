@@ -1,0 +1,105 @@
+! 🧊📦 user_nl_cam for run DustOnly-Strong (mg2_limiter_update; CESM 2.1.5 F2000climo f09_g17).
+
+! 🧪🧊 SPPE block: dust immersion freezing is the only heterogeneous mixed-phase ice source.
+hclas_du_imm = 1
+hclas_du_dep = 0.0
+hclas_du_cnt = 0.0
+hclas_bc_imm = 0.0
+hclas_bc_dep = 0.0
+hclas_bc_cnt = 0.0
+riming_factor = 1
+auto_liq_factor = 1
+micro_mg_ice_berg_ice_factor = 1
+micro_mg_ice_berg_snow_factor = 1
+factor_HM = 0
+onoff_sip = .false.
+onoff_contact_freezing = .false.
+rain_freeze = .false.
+depr_point_frz = .false.
+naai_het_also_in_mpc = .false.
+detrainment_ramp_liq = .true.
+micro_mg_num_steps = 8
+! 🧊📉 Strong: no ice-number cap, dust INP fraction capped at 6.25e-5 per call.
+enable_nimax = .false.
+limfacdu = 0.0000625
+
+! 🌬️🧭 Nudging: ERA5 U/V only, 6-hourly files, linear interpolation, weak time scale, global, full column.
+! 📂🔧 NUDGING_DIR is replaced by scripts/create_case.sh with the directory of your ERA5 nudging files.
+Nudge_Model    = .true.
+Nudge_Path     = 'NUDGING_DIR/'
+Nudge_File_Template = 'ERA5_x_fv1x1_L32_rgC2_WO.%y-%m-%d-%s.nc'
+
+Nudge_Times_Per_Day = 4
+
+! Wind nudging ON (reduced strength to avoid aerosol instability)
+Nudge_Uprof  = 1
+Nudge_Ucoef  = 1 ! weak nudging, otherwise crash!
+Nudge_Vprof  = 1
+Nudge_Vcoef  = 1
+
+! T, Q, PS nudging OFF
+Nudge_Tprof  = 0
+Nudge_Tcoef  = 0.0
+Nudge_Qprof  = 0
+Nudge_Qcoef  = 0.0
+Nudge_PSprof = 0
+Nudge_PScoef = 0.0
+
+! Date range
+Nudge_Beg_Year  = 2000
+Nudge_Beg_Month = 1
+Nudge_Beg_Day   = 1
+Nudge_End_Year  = 2025
+Nudge_End_Month = 12
+Nudge_End_Day   = 31
+
+! Nudge globally, entire column
+Nudge_Hwin_lat0     = 0.0
+Nudge_Hwin_latWidth = 999.0
+Nudge_Hwin_latDelta = 0.1
+Nudge_Hwin_lon0     = 180.0
+Nudge_Hwin_lonWidth = 999.0
+Nudge_Hwin_lonDelta = 0.1
+Nudge_Vwin_Lindex   = 0.0
+Nudge_Vwin_Ldelta   = 0.001
+Nudge_Vwin_Hindex   = 33.0
+Nudge_Vwin_Hdelta   = 0.001
+
+! for stability
+! smoother and more stable than stepping to next file
+Nudge_Force_Opt = 1 ! LINEAR
+! safer than STRONG, especially if stronger settings already crash
+Nudge_TimeScale_Opt  = 0      ! WEAK
+! update nudging every model step if CAM dt = 1800 s = 30 min
+Model_Times_Per_Day  = 48
+
+! 📤📊 History output: h0 monthly, h1 daily 3-D mass, h2 daily 2-D paths, h3 daily COSP, h4 hourly precipitation.
+nhtfrq   = 0, -24, -24 , -24, -1
+mfilt    = 1,   1,    1 , 1,  48
+
+fincl1 = 'CLD_CAL_TMPICE:A','CLD_CAL_TMPLIQ:A','CLD_CAL_TMPUN:A','CLD_CAL_TMP:A',
+         'AODVIS:A','AODDUST:A','AODSO4:A','AODBC:A','AODPOM:A','AODSOA:A','AODSS:A',
+         'CLDICE:A','CLDLIQ:A','T:A','CLDTOP:A','QSNOW:A','QRAIN:A',
+         'ACTNI:A','ACTNL:A','ACTREI:A','ACTREL:A','FCTL:A','FCTI:A',
+         'LWCF:A','SWCF:A','FSNT:A','FSNTC:A','FLNT:A','FLNTC:A',
+         'FLNS:A','FLNSC:A','FSNS:A','FSNSC:A',
+         'TGCLDIWP:A','TGCLDLWP:A',
+         'CDNUMC:A','ICNUMC:A','SCNUMC:A','RDNUMC:A',
+         'CDMASS:A','ICMASS:A','SCMASS:A','RDMASS:A',
+         'BERGO_PATH:A','BERGSO_PATH:A','QCTEN_PATH:A','QINTEN_PATH:A',
+         'NCTEN_PATH:A','NINTEN_PATH:A','QRTEN_PATH:A','QSTEN_PATH:A',
+         'NRTEN_PATH:A','NSTEN_PATH:A',
+         'FRZIMM_PATH:A','FRZCNT_PATH:A','FRZDEP_PATH:A',
+         'PRAO_PATH:A','PSACWSO_PATH:A','PRAIO_PATH:A','PRCO_PATH:A',
+         'PRCIO_PATH:A','PRACSO_PATH:A','MELTO_PATH:A',
+         'QCSEVAP_PATH:A','QISEVAP_PATH:A','CMEIOUT_PATH:A',
+         'EVPRAIN_ST_PATH:A','EVPSNOW_ST_PATH:A',
+         'CLDTOT_CAL:A','PRECT:A','PRECL:A'
+
+            ! Daily cloud mass averages for ITF
+fincl2   = 'CLDICE:I','CLDLIQ:I','T:I','CLDTOP:I','QSNOW:I','QRAIN:I'
+
+fincl3   = 'CLDTOP:I','ACTNI:I','ACTNL:I','ACTREI:I','ACTREL:I','FCTL:I','FCTI:I','LWCF:A','SWCF:A','FSNT:A','FSNTC:A','FLNT:A','FLNTC:A','FLNS:A','FLNSC:A','FSNS:A','FSNSC:A','TGCLDIWP:I','TGCLDLWP:I','CDNUMC:I','ICNUMC:I','SCNUMC:I','RDNUMC:I','CDMASS:I','ICMASS:I','SCMASS:I','RDMASS:I','BERGO_PATH:I','BERGSO_PATH:I','QCTEN_PATH:I','QINTEN_PATH:I','NCTEN_PATH:I','NINTEN_PATH:I','QRTEN_PATH:I','QSTEN_PATH:I','NRTEN_PATH:I','NSTEN_PATH:I','FRZIMM_PATH:I','FRZCNT_PATH:I','FRZDEP_PATH:I','PRAO_PATH:I','PSACWSO_PATH:I','PRAIO_PATH:I','PRCO_PATH:I','PRCIO_PATH:I','PRACSO_PATH:I','MELTO_PATH:I','QCSEVAP_PATH:I','QISEVAP_PATH:I','CMEIOUT_PATH:I','EVPRAIN_ST_PATH:I','EVPSNOW_ST_PATH:I'
+fincl4   = 'CLD_CAL_TMPICE:A','CLD_CAL_TMPLIQ:A','CLDTOT_CAL:A'
+
+fincl5   = 'PRECT:I','PRECL:I'

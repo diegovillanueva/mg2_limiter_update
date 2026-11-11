@@ -1,0 +1,27 @@
+diff --git a/src/physics/cam/macrop_driver.F90 b/src/physics/cam/macrop_driver.F90
+index c707d0a9..e6ef111e 100644
+--- a/src/physics/cam/macrop_driver.F90
++++ b/src/physics/cam/macrop_driver.F90
+@@ -23,6 +23,7 @@
+   use cam_logfile,       only: iulog
+   use cam_abortutils,    only: endrun
+   use zm_conv_intr,      only: zmconv_microp
++   use micro_dv_nml, only: detrainment_ramp_liq, detr_mpc_ice_frac
+ 
+   implicit none
+   private
+@@ -723,7 +724,13 @@ end subroutine macrop_driver_readnl
+       elseif( state_loc%t(i,k) < 238.15_r8 ) then
+           dum1 = 1.0_r8
+       else
+-          dum1 = ( 268.15_r8 - state_loc%t(i,k) ) / 30._r8
++          if( detr_mpc_ice_frac >= 0.0_r8 ) then
++              dum1 = detr_mpc_ice_frac
++          elseif( detrainment_ramp_liq ) then
++              dum1 = 0.0_r8
++          else
++              dum1 = ( 268.15_r8 - state_loc%t(i,k) ) / 30._r8
++          endif
+       endif
+ 
+      ! If detrainment was done elsewhere, still update the variables used for output

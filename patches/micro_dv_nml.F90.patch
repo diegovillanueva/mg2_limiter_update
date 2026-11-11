@@ -1,0 +1,283 @@
+diff --git a/src/physics/cam/micro_dv_nml.F90 b/src/physics/cam/micro_dv_nml.F90
+new file mode 100644
+index 00000000..7ca99add
+--- /dev/null
++++ b/src/physics/cam/micro_dv_nml.F90
+@@ -0,0 +1,277 @@
++module micro_dv_nml
++
++!---------------------------------------------------------------------------------
++! Purpose:
++!   get namelist variables for microphysics
++!
++! Author: Diego Villanueva
++!
++!---------------------------------------------------------------------------------
++
++use shr_kind_mod,     only: r8=>shr_kind_r8
++use spmd_utils,       only: masterproc
++use ppgrid,           only: pcols, pver, pverp
++use ref_pres,         only: top_lev => trop_cloud_top_lev
++use spmd_utils,      only: mpicom, masterprocid, mpi_logical, mpi_real8
++
++
++use cam_history,      only: addfld, add_default, outfld
++use cam_logfile,      only: iulog
++use cam_abortutils,   only: endrun
++
++implicit none
++private
++save
++
++public :: micro_dv_readnl
++
++
++
++!fix imm frz (McGraw "Hoose")
++logical, public            :: enable_nimax = .true.          ! should be FALSE -> no thresh
++! 🧊🔧 Enable the limiter below -37 C independently of enable_nimax.
++logical, public            :: enable_nimax_only_cirrus = .false.
++! 🧊📏 Add contact, immersion, and deposition freezing to the ice-number ceiling.
++logical, public            :: enable_nimax_ceiling_adj = .false.
++real(r8), public           :: limfacdu = 1.0_r8              ! should be 0.05_r8 -> max. INP fraction 
++! Niemand et al. (2012) T- and size-dependent dust immersion freezing limiter (replaces constant limfacdu)
++logical,  public           :: limfacdu_niemand = .false.       ! use FF(T,r) = 1-exp(-4*pi*r^2*n_s(T)) as limiter
++real(r8), public           :: limfacdu_niemand_max = 100.0_r8  ! overall cap on frozen dust fraction per step [%]
++real(r8), public           :: limfacdu_niemand_a = 0.517_r8    ! n_s(T) = exp(-a*(T-273.15) + b) [m-2]; Niemand 2012 original
++real(r8), public           :: limfacdu_niemand_b = 8.934_r8    ! (ECHAM-HAM tuned: a=1.0, b=5.0)
++real(r8), public           :: limfacdu_niemand_factor = 1.0_r8 ! correction factor multiplying FF before the max cap
++logical,  public           :: limfacdu_niemand_singular = .false. ! Niemand as standalone singular dust immersion scheme (replaces CNT/PDF)
++logical,  public           :: limfacdu_niemand_continuous = .false. ! Niemand standalone, freeze FF*N_dust every step (no ice subtraction)
++real(r8), public           :: back_drop_perc_per_hour = 0.0_r8  ! background dust freeze per hour [%/hr]
++real(r8), public           :: du_background = 0.0_r8        ! background dust number concentration #/cm-3
++
++!fix leak
++logical, public            :: naai_het_also_in_mpc = .true.  !should be FALSE -> no leak
++
++real(r8), public           :: hclas_du_imm = 1.0_r8
++!Simplification
++real(r8), public           :: hclas_du_dep = 1.0_r8 !all but imm should be 0 or off
++real(r8), public           :: hclas_du_cnt = 1.0_r8
++real(r8), public           :: hclas_bc_imm = 1.0_r8
++real(r8), public           :: hclas_bc_dep = 1.0_r8
++real(r8), public           :: hclas_bc_cnt = 1.0_r8
++logical, public            :: onoff_contact_freezing = .true. !only relevant if use_hetfrz_classnuc=false
++logical, public            :: onoff_sip = .true.
++logical, public            :: rain_freeze = .true. !  bigg 1953 -> rain to snow
++logical, public            :: detrainment_ramp_liq = .false. ! should be TRUE -> liq (clubb)
++real(r8), public           :: detr_mpc_ice_frac = -1.0_r8
++! Fixed ice fraction for convective detrainment in the mixed-phase corridor (238.15-268.15 K).
++! Range [0.0, 1.0]: 0.0 = all liquid, 1.0 = all ice, x = x*ice + (1-x)*liquid.
++! Default -1.0 = disabled; falls back to detrainment_ramp_liq (then linear T ramp).
++! When >= 0.0, overrides detrainment_ramp_liq.
++logical, public            :: depr_point_frz = .true.  ! freezing point depression effect
++
++!optionals , checked
++real(r8), public           :: hclas_max_t_imm  = 263.15_r8 ! upper T bound for all immersion [K]; above this, frzimm=0
++real(r8), public           :: hclas_min_t_imm  = 150.0_r8  ! lower T bound for ALL immersion (dust_a1+a3+BC) [K]; default 150K = off
++real(r8), public           :: hclas_min_t_imm_coarse = 150.0_r8 ! lower T bound for coarse dust (dust_a3) [K]; default 150K = off
++real(r8), public           :: tc_ramp_top = -42._r8  ! cold temperature limit for freezing rate ramp [C]
++real(r8), public           :: tc_ramp_bot = -6._r8   ! warm temperature limit for freezing rate ramp [C]
++real(r8), public           :: tc_apparent_ramp_top = -42._r8 !-24._r8  ! apparent temperature at cold limit [C]
++real(r8), public           :: tc_apparent_ramp_bot = -6._r8  ! -18._r8  ! apparent temperature at warm limit [C]
++logical, public            :: frz_assume_ramp_rhce = .false. ! assume ramped supersatice for rgimm calculation
++real(r8), public           :: theta_imm_dust = 46.0_r8      ! contact angle for dust immersion freezing [deg]
++real(r8), public           :: theta_imm_dust_a3 = 46.0_r8    ! same for dust_a3 [deg] use 9.63 for microcline from Chang 2024
++real(r8), public           :: fi_factor = 1.0_r8 !for cirrus ice and snow
++real(r8), public           :: fi_factor_mpc = 1.0_r8 !for mpc ice and snow
++real(r8), public           :: micro_mg_ice_berg_ice_factor = 1.0_r8
++real(r8), public           :: micro_mg_ice_berg_snow_factor = 1.0_r8
++real(r8), public           :: berg_to_snow_masspp = 0.0_r8
++logical, public            :: enable_dst_num_cirrus = .true.  ! set dst_num to zero before entering cirrus nucleation
++real(r8), public           :: sublim_factor = 0.0_r8 !this was hardcoded like this by default 
++real(r8), public           :: sublim_factor_mpc_ni = 0.0_r8 !this was hardcoded like this by default 
++logical, public            :: avoid_nuc_blowup = .false.  ! cap wbar inside nucleati when use_preexisting_ice=F
++real(r8), public           :: cirr_dst_fact = 1.0_r8  ! factor for dust number in cirrus nucleation
++real(r8), public           :: cirr_soot_fact   = 1.0_r8  ! factor for soot number in cirrus nucleation
++real(r8), public           :: cirr_hom_fact    = 1.0_r8  ! multiplier on homogeneous freezing number (nihf) in cirrus
++real(r8), public           :: cirr_preice_fact = 1.0_r8  ! multiplier on preexisting ice contribution to cirrus ni
++real(r8), public           :: sublim_factor_mpc_tot = 1.0_r8 !this was hardcoded like this by default
++real(r8), public           :: factor_HM = 1.0_r8 !this was hardcoded like this by default
++real(r8), public           :: auto_liq_factor = 1.0_r8  ! multiplier for liquid autoconversion rate (prc)
++real(r8), public           :: auto_ice_factor  = 1.0_r8  ! multiplier for ice autoconversion rate (prci)
++real(r8), public           :: riming_factor    = 1.0_r8  ! multiplier for snow riming rate (psacws/npsacws)
++logical, public            :: berg_in_cirrus   = .true.  ! .false. zeroes berg/bergs for T < 233.15 K
++logical, public            :: hom_frz_qc_early = .false. ! .true. freezes cloud water below 233.15 K before MG2 process rates
++
++
++!=========================================================================================
++contains
++!=========================================================================================
++
++subroutine micro_dv_readnl(nlfile)
++
++   use namelist_utils,  only: find_group_name
++   use units,           only: getunit, freeunit
++   use mpishorthand
++
++   character(len=*), intent(in) :: nlfile  ! filepath for file containing namelist input
++
++   ! Local variables
++   integer :: unitn, ierr
++   character(len=*), parameter :: subname = 'micro_dv_readnl'
++
++   namelist /micro_dv_nl/ avoid_nuc_blowup, onoff_contact_freezing, &
++       hclas_du_imm, hclas_du_dep, hclas_du_cnt, hclas_bc_imm, hclas_bc_dep, hclas_bc_cnt, &
++       hclas_max_t_imm, hclas_min_t_imm, hclas_min_t_imm_coarse, tc_ramp_top, tc_ramp_bot, &
++       tc_apparent_ramp_top, tc_apparent_ramp_bot, frz_assume_ramp_rhce, onoff_sip, fi_factor, fi_factor_mpc, limfacdu, du_background, &
++       limfacdu_niemand, limfacdu_niemand_max, limfacdu_niemand_a, limfacdu_niemand_b, limfacdu_niemand_factor, limfacdu_niemand_singular, &
++       limfacdu_niemand_continuous, &
++       back_drop_perc_per_hour, &
++       theta_imm_dust, theta_imm_dust_a3, &
++       sublim_factor, sublim_factor_mpc_ni, sublim_factor_mpc_tot, factor_HM, &
++       micro_mg_ice_berg_ice_factor, micro_mg_ice_berg_snow_factor, &
++       berg_to_snow_masspp, rain_freeze, naai_het_also_in_mpc, &
++        detrainment_ramp_liq, detr_mpc_ice_frac, enable_nimax, enable_dst_num_cirrus, depr_point_frz, cirr_dst_fact, &
++        enable_nimax_only_cirrus, enable_nimax_ceiling_adj, &
++        cirr_soot_fact, auto_liq_factor, auto_ice_factor, riming_factor, berg_in_cirrus, hom_frz_qc_early, &
++        cirr_hom_fact, cirr_preice_fact
++   !-----------------------------------------------------------------------------
++
++   if (masterproc) then
++      unitn = getunit()
++      open( unitn, file=trim(nlfile), status='old' )
++      call find_group_name(unitn, 'micro_dv_nl', status=ierr)
++      if (ierr == 0) then
++         read(unitn, micro_dv_nl, iostat=ierr)
++         if (ierr /= 0) then
++            call endrun(subname // ':: ERROR reading namelist')
++         end if
++      end if
++      close(unitn)
++      call freeunit(unitn)
++   end if
++
++   ! Broadcast namelist variable
++  call mpi_bcast(avoid_nuc_blowup,       1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(onoff_contact_freezing, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(detrainment_ramp_liq, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(detr_mpc_ice_frac,   1, mpi_real8,   masterprocid, mpicom, ierr)
++  call mpi_bcast(depr_point_frz, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(frz_assume_ramp_rhce, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(enable_dst_num_cirrus, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(naai_het_also_in_mpc, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(enable_nimax, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(enable_nimax_only_cirrus, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(enable_nimax_ceiling_adj, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(onoff_sip, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(rain_freeze, 1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(fi_factor, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(fi_factor_mpc, 1, mpi_real8,masterprocid, mpicom, ierr)
++
++  call mpi_bcast(sublim_factor, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(sublim_factor_mpc_ni, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(sublim_factor_mpc_tot, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(factor_HM, 1, mpi_real8,masterprocid, mpicom, ierr)
++
++  call mpi_bcast(micro_mg_ice_berg_ice_factor, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(micro_mg_ice_berg_snow_factor, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(berg_to_snow_masspp, 1, mpi_real8,masterprocid, mpicom, ierr)
++
++  call mpi_bcast(hclas_du_imm, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(hclas_du_dep, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(hclas_du_cnt, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(hclas_bc_imm, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(hclas_bc_dep, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(hclas_bc_cnt, 1, mpi_real8,masterprocid, mpicom, ierr)
++
++  call mpi_bcast(hclas_max_t_imm, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(hclas_min_t_imm, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(hclas_min_t_imm_coarse, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(tc_ramp_top, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(tc_ramp_bot, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(tc_apparent_ramp_top, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(tc_apparent_ramp_bot, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu_niemand, 1, mpi_logical,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu_niemand_max, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu_niemand_a, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu_niemand_b, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu_niemand_factor, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu_niemand_singular, 1, mpi_logical,masterprocid, mpicom, ierr)
++  call mpi_bcast(limfacdu_niemand_continuous, 1, mpi_logical,masterprocid, mpicom, ierr)
++  call mpi_bcast(du_background, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(theta_imm_dust, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(back_drop_perc_per_hour, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(theta_imm_dust_a3, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(cirr_dst_fact, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(cirr_soot_fact, 1, mpi_real8,masterprocid, mpicom, ierr)
++  call mpi_bcast(auto_liq_factor,   1, mpi_real8, masterprocid, mpicom, ierr)
++  call mpi_bcast(auto_ice_factor,   1, mpi_real8, masterprocid, mpicom, ierr)
++  call mpi_bcast(riming_factor,     1, mpi_real8, masterprocid, mpicom, ierr)
++  call mpi_bcast(berg_in_cirrus,    1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(hom_frz_qc_early,  1, mpi_logical, masterprocid, mpicom, ierr)
++  call mpi_bcast(cirr_hom_fact,    1, mpi_real8, masterprocid, mpicom, ierr)
++  call mpi_bcast(cirr_preice_fact, 1, mpi_real8, masterprocid, mpicom, ierr)
++
++  if (masterproc) then
++      write(iulog,*) ' avoid_nuc_blowup = ', avoid_nuc_blowup
++      write(iulog,*) ' fi_factor = ', fi_factor
++      write(iulog,*) ' fi_factor_mpc = ', fi_factor_mpc
++
++      write(iulog,*) ' sublim_factor = ', sublim_factor
++      write(iulog,*) ' sublim_factor_mpc_ni = ', sublim_factor_mpc_ni
++      write(iulog,*) ' sublim_factor_mpc_tot = ', sublim_factor_mpc_tot
++      write(iulog,*) ' factor_HM = ', factor_HM
++
++      write(iulog,*) ' micro_mg_ice_berg_ice_factor = ', micro_mg_ice_berg_ice_factor
++      write(iulog,*) ' micro_mg_ice_berg_snow_factor = ', micro_mg_ice_berg_snow_factor
++      write(iulog,*) ' berg_to_snow_masspp = ', berg_to_snow_masspp
++      write(iulog,*) ' rain_freeze = ', rain_freeze
++
++      write(iulog,*) ' hclas_du_imm = ', hclas_du_imm
++      write(iulog,*) ' hclas_du_dep = ', hclas_du_dep
++      write(iulog,*) ' hclas_du_cnt = ', hclas_du_cnt
++      write(iulog,*) ' hclas_bc_imm = ', hclas_bc_imm
++      write(iulog,*) ' hclas_bc_dep = ', hclas_bc_dep
++      write(iulog,*) ' hclas_bc_cnt = ', hclas_bc_cnt
++
++      write(iulog,*) ' hclas_max_t_imm = ', hclas_max_t_imm
++      write(iulog,*) ' hclas_min_t_imm = ', hclas_min_t_imm
++      write(iulog,*) ' hclas_min_t_imm_coarse = ', hclas_min_t_imm_coarse
++      write(iulog,*) ' tc_ramp_top = ', tc_ramp_top
++      write(iulog,*) ' tc_ramp_bot = ', tc_ramp_bot
++      write(iulog,*) ' tc_apparent_ramp_top = ', tc_apparent_ramp_top
++      write(iulog,*) ' tc_apparent_ramp_bot = ', tc_apparent_ramp_bot
++      write(iulog,*) ' limfacdu = ', limfacdu
++      write(iulog,*) ' limfacdu_niemand = ', limfacdu_niemand
++      write(iulog,*) ' limfacdu_niemand_max = ', limfacdu_niemand_max
++      write(iulog,*) ' limfacdu_niemand_a = ', limfacdu_niemand_a
++      write(iulog,*) ' limfacdu_niemand_b = ', limfacdu_niemand_b
++      write(iulog,*) ' limfacdu_niemand_factor = ', limfacdu_niemand_factor
++      write(iulog,*) ' limfacdu_niemand_singular = ', limfacdu_niemand_singular
++      write(iulog,*) ' limfacdu_niemand_continuous = ', limfacdu_niemand_continuous
++      write(iulog,*) ' du_background = ', du_background
++      write(iulog,*) ' theta_imm_dust = ', theta_imm_dust
++      write(iulog,*) ' theta_imm_dust_a3 = ', theta_imm_dust_a3
++      write(iulog,*) ' cirr_dst_fact = ', cirr_dst_fact
++      write(iulog,*) ' cirr_soot_fact = ', cirr_soot_fact
++      write(iulog,*) ' back_drop_perc_per_hour = ', back_drop_perc_per_hour
++      write(iulog,*) ' auto_liq_factor  = ', auto_liq_factor
++      write(iulog,*) ' auto_ice_factor  = ', auto_ice_factor
++      write(iulog,*) ' riming_factor    = ', riming_factor
++      write(iulog,*) ' berg_in_cirrus   = ', berg_in_cirrus
++      write(iulog,*) ' hom_frz_qc_early = ', hom_frz_qc_early
++      write(iulog,*) ' cirr_hom_fact    = ', cirr_hom_fact
++      write(iulog,*) ' cirr_preice_fact = ', cirr_preice_fact
++
++      write(iulog,*) ' onoff_contact_freezing = ', onoff_contact_freezing
++      write(iulog,*) ' onoff_sip = ', onoff_sip
++      write(iulog,*) ' detrainment_ramp_liq = ', detrainment_ramp_liq
++      write(iulog,*) ' detr_mpc_ice_frac = ', detr_mpc_ice_frac
++      write(iulog,*) ' depr_point_frz = ', depr_point_frz
++      write(iulog,*) ' frz_assume_ramp_rhce = ', frz_assume_ramp_rhce
++      write(iulog,*) ' enable_dst_num_cirrus = ', enable_dst_num_cirrus
++      write(iulog,*) ' enable_nimax = ', enable_nimax
++      write(iulog,*) ' enable_nimax_only_cirrus = ', enable_nimax_only_cirrus
++      write(iulog,*) ' enable_nimax_ceiling_adj = ', enable_nimax_ceiling_adj
++  end if
++
++end subroutine micro_dv_readnl
++
++!=========================================================================================
++end module micro_dv_nml

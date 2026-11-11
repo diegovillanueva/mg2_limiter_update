@@ -1,0 +1,33 @@
+diff --git a/src/physics/cam/clubb_intr.F90 b/src/physics/cam/clubb_intr.F90
+index 1d2648d6..bf7090ae 100644
+--- a/src/physics/cam/clubb_intr.F90
++++ b/src/physics/cam/clubb_intr.F90
+@@ -24,7 +24,10 @@ module clubb_intr
+   use constituents,  only: pcnst, cnst_add
+   use pbl_utils,     only: calc_ustar, calc_obklen
+   use ref_pres,      only: top_lev => trop_cloud_top_lev  
+-  use zm_conv_intr,  only: zmconv_microp
++   use zm_conv_intr,  only: zmconv_microp
++! DV: Switches for ice contributions to MPCs - Start
++   use micro_dv_nml, only: detrainment_ramp_liq, detr_mpc_ice_frac
++! DV: Switches for ice contributions to MPCs - End
+   implicit none
+ 
+   private
+@@ -2349,7 +2352,15 @@ end subroutine clubb_init_cnst
+          elseif ( state1%t(i,k) < 238.15_r8 ) then
+             dum1 = 1.0_r8
+          else
+-            dum1 = ( 268.15_r8 - state1%t(i,k) ) / 30._r8 
++! DV: Switches for ice contributions to MPCs - Start
++            if( detr_mpc_ice_frac >= 0.0_r8 ) then
++                dum1 = detr_mpc_ice_frac
++            elseif( detrainment_ramp_liq ) then
++                dum1 = 0.0_r8
++            else
++                dum1 = ( 268.15_r8 - state1%t(i,k) ) / 30._r8  ! DV in deep convection and shallow convection 30dg ramp
++            endif
++! DV: Switches for ice contributions to MPCs - End
+          endif
+ 
+          if (zmconv_microp) then

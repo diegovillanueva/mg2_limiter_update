@@ -1,0 +1,195 @@
+diff --git a/src/physics/cam/nucleate_ice.F90 b/src/physics/cam/nucleate_ice.F90
+index b0053051..f973d056 100644
+--- a/src/physics/cam/nucleate_ice.F90
++++ b/src/physics/cam/nucleate_ice.F90
+@@ -30,6 +30,8 @@ module nucleate_ice
+ !-------------------------------------------------------------------------------
+ 
+ use wv_saturation,  only: svp_water, svp_ice
++use micro_dv_nml,    only: cirr_dst_fact, cirr_soot_fact, cirr_hom_fact, cirr_preice_fact, &
++                           avoid_nuc_blowup
+ 
+ implicit none
+ private
+@@ -141,7 +143,8 @@ subroutine nucleati(  &
+    real(r8) :: detaT,RHimean    ! temperature standard deviation, mean cloudy RHi
+    real(r8) :: wpicehet   ! diagnosed Vertical velocity Reduction caused by preexisting ice (m/s), at shet
+ 
+-   real(r8) :: weffhet    ! effective Vertical velocity for ice nucleation (m/s)  weff=wbar-wpicehet 
++   real(r8) :: weffhet    ! effective Vertical velocity for ice nucleation (m/s)  weff=wbar-wpicehet
++   real(r8) :: eff_inp_num  ! effective INP number: soot_num*cirr_soot_fact + dst_num*cirr_dst_fact
+ 
+    logical  :: call_frm_zm
+    !-------------------------------------------------------------------------------
+@@ -210,15 +213,52 @@ subroutine nucleati(  &
+    odst_num  = 0._r8
+    osoot_num = 0._r8
+ 
++   ! Without preexisting ice, wbar1 is uncapped (ZM updrafts up to ~4 m/s).
++   ! Large wbar1 drives regm = A*log(wbar1)+B >> 0C, classifying all cirrus as
++   ! "hom-only". In that branch, niimm = full_aerosol is set BEFORE cirr_hom_fact
++   ! is applied, so het ice persists even when cirr_hom_fact=0. Excessive het ice
++   ! depletes Q to zero -> water mass is lost each step -> SIGSEGV after ~10 sim-days.
++   ! Fix: cap wbar1/wbar2 at 0.2 m/s (matching the microp_aero stratiform cap).
++   ! Also initialises wpice/weff which are otherwise unassigned intent(out) variables.
++   if (avoid_nuc_blowup .and. (.not. use_preexisting_ice)) then
++      wpice = 0._r8
++      weff  = wbar
++      wbar1 = min(wbar1, 0.2_r8)
++      wbar2 = min(wbar2, 0.2_r8)
++   end if
++
++   ! When use_preexisting_ice=F (nnopice), fhom is stuck at 1.0 because the
++   ! detaT/frachom block above is guarded by use_preexisting_ice.  fhom=1 means
++   ! the entire grid box is assumed to reach the homogeneous freezing threshold,
++   ! over-nucleating by 2-10x relative to the preexisting-ice case and causing
++   ! NaN blow-ups in Sa_z at specific locations (e.g. tropical cold point, W Pacific).
++   ! Fix: compute detaT and fhom here using wbar, matching the preexisting-ice path.
++   if (avoid_nuc_blowup .and. (.not. use_preexisting_ice) .and. (.not. call_frm_zm)) then
++      detaT = wbar / 0.23_r8
++      if (use_incloud_nuc) then
++         call frachom(tair, 1._r8, detaT, fhom)
++      else
++         call frachom(tair, RHimean, detaT, fhom)
++      end if
++   end if
++
+    if ((so4_num >= 1.0e-10_r8 .or. (soot_num+dst_num) >= 1.0e-10_r8) .and. cldn > 0._r8) then
+ 
+       if (RHimean.ge.1.2_r8) then
+ 
+          if ( ((tc.le.0.0_r8).and.(tc.ge.-37.0_r8).and.(qc.lt.1.e-12_r8)).or.(tc.le.-37.0_r8)) then
+ 
+-            A = -1.4938_r8 * log(soot_num+dst_num) + 12.884_r8
+-            B = -10.41_r8  * log(soot_num+dst_num) - 67.69_r8
+-            regm = A * log(wbar1) + B
++            eff_inp_num = soot_num*cirr_soot_fact + dst_num*cirr_dst_fact
++
++            ! If both cirr_dst_fact and cirr_soot_fact are zero, skip log(0) and
++            ! force the homogeneous-only branch by setting regm >> tc.
++            if (eff_inp_num >= 1.0e-10_r8) then
++               A = -1.4938_r8 * log(eff_inp_num) + 12.884_r8
++               B = -10.41_r8  * log(eff_inp_num) - 67.69_r8
++               regm = A * log(wbar1) + B
++            else
++               regm = 1.0e10_r8
++            end if
+ 
+             ! heterogeneous nucleation only
+             if (tc .gt. regm .or. so4_num < 1.0e-10_r8) then
+@@ -232,26 +272,28 @@ subroutine nucleati(  &
+                   ! If some homogeneous nucleation happened, assume all of the that heterogeneous
+                   ! and coarse mode sulfate particles nucleated.
+                   if (nihf.gt.1e-3_r8) then ! hom occur,  add preexisting ice
+-                     niimm     = dst_num + soot_num       ! assuming dst_num freeze firstly
++                     niimm     = dst_num*cirr_dst_fact + soot_num*cirr_soot_fact       ! assuming dst_num freeze firstly
+                      odst_num  = dst_num
+                      osoot_num = soot_num
+-                     
++
+                      oso4_num  = nihf
+                   endif
+ 
+-                  nihf      = nihf * fhom
++                  nihf      = nihf * fhom * cirr_hom_fact
+                   oso4_num  = oso4_num * fhom
+ 
+                   n1        = nihf + niimm
+                else
+ 
+-                  call hetero(tc,wbar2,soot_num+dst_num,niimm,nidep)
++                  call hetero(tc,wbar2,eff_inp_num,niimm,nidep)
+ 
+                   nihf = 0._r8
+                   n1   = niimm + nidep
+-                  
+-                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num) 
+-                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num) 
++
++                  if (eff_inp_num > 0._r8) then
++                     osoot_num = soot_num * (niimm + nidep) / eff_inp_num
++                     odst_num  = dst_num  * (niimm + nidep) / eff_inp_num
++                  end if
+                endif
+ 
+             ! homogeneous nucleation only
+@@ -264,14 +306,14 @@ subroutine nucleati(  &
+                ! If some homogeneous nucleation happened, assume all of the that
+                ! heterogeneous and coarse mode sulfate particles nucleated.
+                if (nihf.gt.1e-3_r8) then !  hom occur,  add preexisting ice
+-                  niimm     = dst_num + soot_num       ! assuming dst_num freeze firstly
++                  niimm     = cirr_dst_fact*dst_num + cirr_soot_fact*soot_num       ! assuming dst_num freeze firstly
+                   odst_num  = dst_num
+                   osoot_num = soot_num
+-                     
++
+                   oso4_num  = nihf
+                endif
+ 
+-               nihf      = nihf * fhom
++               nihf      = nihf * fhom * cirr_hom_fact
+                oso4_num  = oso4_num * fhom
+ 
+                n1        = nihf + niimm
+@@ -288,14 +330,14 @@ subroutine nucleati(  &
+                   ! If some homogeneous nucleation happened, assume all of the
+                   ! that heterogeneous and coarse mode sulfate particles nucleated.
+                   if (nihf.gt.1e-3_r8) then ! hom occur,  add preexisting ice
+-                     niimm     = dst_num + soot_num       ! assuming dst_num freeze firstly
++                     niimm     = cirr_dst_fact*dst_num + cirr_soot_fact*soot_num       ! assuming dst_num freeze firstly
+                      odst_num  = dst_num
+                      osoot_num = soot_num
+ 
+                      oso4_num  = nihf
+                   endif
+ 
+-                  nihf      = nihf * fhom
++                  nihf      = nihf * fhom * cirr_hom_fact
+                   oso4_num  = oso4_num * fhom
+ 
+                   n1        = nihf + niimm
+@@ -303,7 +345,7 @@ subroutine nucleati(  &
+                else
+ 
+                   call hf(regm-5._r8,wbar1,relhum*subgrid,so4_num,nihf)
+-                  call hetero(regm,wbar2,soot_num+dst_num,niimm,nidep)
++                  call hetero(regm,wbar2,eff_inp_num,niimm,nidep)
+ 
+                   ! If some homogeneous nucleation happened, assume all of the
+                   ! heterogeneous particles nucleated and add in a fraction of
+@@ -311,11 +353,13 @@ subroutine nucleati(  &
+                   if (nihf.gt.1e-3_r8) then ! hom occur,  add preexisting ice
+                      oso4_num  = nihf
+                   endif
+-                     
+-                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
+-                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
+ 
+-                  nihf      = nihf      * fhom * ((regm - tc) / 5._r8)**2
++                  if (eff_inp_num > 0._r8) then
++                     osoot_num = soot_num * (niimm + nidep) / eff_inp_num
++                     odst_num  = dst_num  * (niimm + nidep) / eff_inp_num
++                  end if
++
++                  nihf      = nihf      * fhom * ((regm - tc) / 5._r8)**2 * cirr_hom_fact
+                   oso4_num  = oso4_num  * fhom * ((regm - tc) / 5._r8)**2
+ 
+                   n1 = niimm + nidep + nihf
+@@ -329,7 +373,7 @@ subroutine nucleati(  &
+ 
+             ! If using prexsiting ice, then add it to the total.
+             if (use_preexisting_ice .and. (.not. call_frm_zm)) then
+-              ni = ni + Ni_preice * 1e-6_r8
++              ni = ni + Ni_preice * 1e-6_r8 * cirr_preice_fact
+             end if
+          end if
+       end if
+@@ -351,7 +395,7 @@ subroutine nucleati(  &
+ 
+    if(nuci.gt.9999._r8.or.nuci.lt.0._r8) then
+       write(iulog, *) 'Warning: incorrect ice nucleation number (nuci reset =0)'
+-      write(iulog, *) ni, tair, relhum, wbar, nihf, niimm, nidep,deles,esi,dst_num,so4_num
++      write(iulog, *) ni, tair, relhum, wbar, nihf, niimm, nidep,deles,esi,dst_num,so4_num, cirr_dst_fact
+       nuci=0._r8
+    endif
+ 

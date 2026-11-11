@@ -1,0 +1,70 @@
+diff --git a/src/physics/cam/micro_mg_utils.F90 b/src/physics/cam/micro_mg_utils.F90
+index fee464c0..27a65e86 100644
+--- a/src/physics/cam/micro_mg_utils.F90
++++ b/src/physics/cam/micro_mg_utils.F90
+@@ -35,10 +35,13 @@ module micro_mg_utils
+ !
+ !--------------------------------------------------------------------------
+ 
++use micro_dv_nml, only: onoff_contact_freezing, onoff_sip, rain_freeze, sublim_factor_mpc_tot, factor_HM
++
+ #ifndef HAVE_GAMMA_INTRINSICS
+ use shr_spfn_mod, only: gamma => shr_spfn_gamma
+ #endif
+ 
++
+ implicit none
+ private
+ save
+@@ -660,7 +663,13 @@ subroutine ice_deposition_sublimation(t, qv, qi, ni, &
+            ice_sublim(i)=0._r8
+         else
+         ! make ice_sublim negative for consistency with other evap/sub processes
+-           ice_sublim(i)=min(vap_dep(i),0._r8)
++            ! DV: add here a conditional on t(:,k) between tmelt and hom freezing point -40dgC, to use sublim_factor_mpc
++            if (t(i) >= tmelt .and. t(i) < 233.15_r8) then
++                ice_sublim(i)=sublim_factor_mpc_tot*min(vap_dep(i),0._r8) ! default sublim_factor_mpc_tot=1
++            else
++                ice_sublim(i)=min(vap_dep(i),0._r8)
++            end if
++
+            vap_dep(i)=0._r8
+         end if
+ 
+@@ -1006,7 +1015,8 @@ subroutine contact_freezing (microp_uniform, t, p, rndst, nacon, &
+ 
+   do i = 1,mgncol
+ 
+-     if (qcic(i) >= qsmall .and. t(i) < 269.15_r8) then
++     !if (qcic(i) >= qsmall .and. t(i) < 269.15_r8) then
++     if (qcic(i) >= qsmall .and. t(i) < 269.15_r8 .and. onoff_contact_freezing) then
+ 
+         if (.not. microp_uniform) then
+            dum = var_coef(relvar(i), 4._r8/3._r8)
+@@ -1168,10 +1178,12 @@ subroutine secondary_ice_production(t, psacws, msacwi, nsacwi, mgncol)
+   integer :: i
+ 
+   do i=1,mgncol
+-     if((t(i) < 270.16_r8) .and. (t(i) >= 268.16_r8)) then
+-        nsacwi(i) = 3.5e8_r8*(270.16_r8-t(i))/2.0_r8*psacws(i)
+-     else if((t(i) < 268.16_r8) .and. (t(i) >= 265.16_r8)) then
+-        nsacwi(i) = 3.5e8_r8*(t(i)-265.16_r8)/3.0_r8*psacws(i)
++     !if((t(i) < 270.16_r8) .and. (t(i) >= 268.16_r8)) then
++     if((t(i) < 270.16_r8) .and. (t(i) >= 268.16_r8) .and. onoff_sip ) then
++        nsacwi(i) = 3.5e8_r8*(270.16_r8-t(i))/2.0_r8*psacws(i)*factor_HM
++     !else if((t(i) < 268.16_r8) .and. (t(i) >= 265.16_r8)) then
++     else if((t(i) < 268.16_r8) .and. (t(i) >= 265.16_r8) .and. onoff_sip ) then
++        nsacwi(i) = 3.5e8_r8*(t(i)-265.16_r8)/3.0_r8*psacws(i)*factor_HM
+      else
+         nsacwi(i) = 0.0_r8
+      endif
+@@ -1271,7 +1283,8 @@ subroutine heterogeneous_rain_freezing(t, qric, nric, lamr, mnuccr, nnuccr, mgnc
+ 
+   do i=1,mgncol
+ 
+-     if (t(i) < 269.15_r8 .and. qric(i) >= qsmall) then
++     !if (t(i) < 269.15_r8 .and. qric(i) >= qsmall) then
++     if (t(i) < 269.15_r8 .and. qric(i) >= qsmall .and. rain_freeze) then
+         nnuccr(i) = pi*nric(i)*bimm* &
+              (exp(aimm*(tmelt - t(i)))-1._r8)/lamr(i)**3
+ 

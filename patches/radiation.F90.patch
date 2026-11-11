@@ -1,0 +1,86 @@
+diff --git a/src/physics/rrtmg/radiation.F90 b/src/physics/rrtmg/radiation.F90
+index 9f9cfa40..50fba21a 100644
+--- a/src/physics/rrtmg/radiation.F90
++++ b/src/physics/rrtmg/radiation.F90
+@@ -25,7 +25,9 @@ use radconstants,        only: nswbands, nlwbands, rrtmg_sw_cloudsim_band, rrtmg
+                                idx_sw_diag
+ 
+ use cospsimulator_intr,  only: docosp, cospsimulator_intr_init, &
+-                               cospsimulator_intr_run, cosp_nradsteps
++                               cospsimulator_intr_run, cosp_nradsteps, cosp_15m, &
++                               cosp_cldtau_idx, cosp_snowtau_idx, cosp_snowlw_idx, &
++                               cosp_emis_idx, cosp_coszrs_idx
+ 
+ use scamMod,             only: scm_crm_mode, single_column, have_cld, cldobs
+ 
+@@ -713,7 +715,9 @@ subroutine radiation_tend( &
+    use interpolate_data,   only: vertinterp
+    use tropopause,         only: tropopause_find, TROP_ALG_HYBSTOB, TROP_ALG_CLIMATE
+ 
+-   use cospsimulator_intr, only: docosp, cospsimulator_intr_run, cosp_nradsteps
++   use cospsimulator_intr, only: docosp, cospsimulator_intr_run, cosp_nradsteps, cosp_15m, &
++                                  cosp_cldtau_idx, cosp_snowtau_idx, cosp_snowlw_idx, &
++                                  cosp_emis_idx, cosp_coszrs_idx
+ 
+    ! Arguments
+    type(physics_state), intent(in), target :: state
+@@ -831,6 +835,13 @@ subroutine radiation_tend( &
+    real(r8) :: gb_snow_tau(pcols,pver) ! grid-box mean snow_tau
+    real(r8) :: gb_snow_lw(pcols,pver)  ! grid-box mean LW snow optical depth
+ 
++   ! pbuf pointers for cosp_15m optical-depth storage
++   real(r8), pointer :: cosp_cldtau_ptr(:,:)
++   real(r8), pointer :: cosp_snowtau_ptr(:,:)
++   real(r8), pointer :: cosp_snowlw_ptr(:,:)
++   real(r8), pointer :: cosp_emis_ptr(:,:)
++   real(r8), pointer :: cosp_coszrs_ptr(:)
++
+    real(r8) :: ftem(pcols,pver)        ! Temporary workspace for outfld variables
+ 
+    real(r8) :: freqclr(pcols)          ! Frequency of occurrence of clear sky columns
+@@ -1206,18 +1217,33 @@ subroutine radiation_tend( &
+             end do
+          end if
+ 
+-         ! advance counter for this timestep (chunk dimension required for thread safety)
+-         cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
+-
+-         ! if counter is the same as cosp_nradsteps, run cosp and reset counter
+-         if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
+-
+-            ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave
+-            !       optical depths are passed.
+-            call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
+-               cld_swtau_in=cld_tau(rrtmg_sw_cloudsim_band,:,:),&
+-               snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
+-            cosp_cnt(lchnk) = 0
++         if (cosp_15m) then
++            ! Store optical depths and solar/emissivity fields in pbuf for use by
++            ! the every-timestep COSP call in physpkg. Do NOT call COSP here.
++            call pbuf_get_field(pbuf, cosp_cldtau_idx,  cosp_cldtau_ptr)
++            call pbuf_get_field(pbuf, cosp_snowtau_idx, cosp_snowtau_ptr)
++            call pbuf_get_field(pbuf, cosp_snowlw_idx,  cosp_snowlw_ptr)
++            call pbuf_get_field(pbuf, cosp_emis_idx,    cosp_emis_ptr)
++            call pbuf_get_field(pbuf, cosp_coszrs_idx,  cosp_coszrs_ptr)
++            cosp_cldtau_ptr(:ncol,:)  = cld_tau(rrtmg_sw_cloudsim_band,:ncol,:)
++            cosp_snowtau_ptr(:ncol,:) = gb_snow_tau(:ncol,:)
++            cosp_snowlw_ptr(:ncol,:)  = gb_snow_lw(:ncol,:)
++            cosp_emis_ptr(:ncol,:)    = emis(:ncol,:)
++            cosp_coszrs_ptr(:ncol)    = coszrs(:ncol)
++         else
++            ! advance counter for this timestep (chunk dimension required for thread safety)
++            cosp_cnt(lchnk) = cosp_cnt(lchnk) + 1
++
++            ! if counter is the same as cosp_nradsteps, run cosp and reset counter
++            if (cosp_nradsteps .eq. cosp_cnt(lchnk)) then
++
++               ! N.B.: For snow optical properties, the GRID-BOX MEAN shortwave and longwave
++               !       optical depths are passed.
++               call cospsimulator_intr_run(state,  pbuf, cam_in, emis, coszrs, &
++                  cld_swtau_in=cld_tau(rrtmg_sw_cloudsim_band,:,:),&
++                  snow_tau_in=gb_snow_tau, snow_emis_in=gb_snow_lw)
++               cosp_cnt(lchnk) = 0
++            end if
+          end if
+       end if
+ 

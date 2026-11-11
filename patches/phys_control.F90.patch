@@ -1,0 +1,25 @@
+diff --git a/src/physics/cam/phys_control.F90 b/src/physics/cam/phys_control.F90
+index 743bcf80..bcb0b606 100644
+--- a/src/physics/cam/phys_control.F90
++++ b/src/physics/cam/phys_control.F90
+@@ -234,6 +234,20 @@ subroutine phys_ctl_readnl(nlfile)
+    ! prog_modal_aero determines whether prognostic modal aerosols are present in the run.
+    prog_modal_aero = index(cam_chempkg,'_mam')>0
+ 
++   if( masterproc ) then
++      write(iulog,*) 'deep_scheme =', deep_scheme
++      write(iulog,*) 'cam_physpkg =', cam_physpkg
++      write(iulog,*) 'use_simple_phys =', use_simple_phys
++      write(iulog,*) 'cam_chempkg =', cam_chempkg
++      write(iulog,*) 'waccmx_opt =', waccmx_opt
++      write(iulog,*) 'shallow_scheme =', shallow_scheme
++      write(iulog,*) 'eddy_scheme =', eddy_scheme
++      write(iulog,*) 'microp_scheme =', microp_scheme
++      write(iulog,*) 'radiation_scheme =', radiation_scheme
++      write(iulog,*) 'macrop_scheme =', macrop_scheme
++    end if
++
++
+ end subroutine phys_ctl_readnl
+ 
+ !===============================================================================

@@ -1,0 +1,44 @@
+diff --git a/src/physics/cam/nucleate_ice_cam.F90 b/src/physics/cam/nucleate_ice_cam.F90
+index dcc59f0c..690176c0 100644
+--- a/src/physics/cam/nucleate_ice_cam.F90
++++ b/src/physics/cam/nucleate_ice_cam.F90
+@@ -31,6 +31,7 @@ use cam_logfile,    only: iulog
+ use cam_abortutils, only: endrun
+ 
+ use nucleate_ice,   only: nucleati_init, nucleati
++use micro_dv_nml, only: enable_dst_num_cirrus
+ 
+ 
+ implicit none
+@@ -710,10 +711,14 @@ subroutine nucleate_ice_cam_calc( &
+                if (idxdst4 > 0) then 
+                   dst4_num = naer2(i,k,idxdst4)/25._r8 *1.0e-6_r8
+                end if
+-               dst_num = dst1_num + dst2_num + dst3_num + dst4_num
++                dst_num = dst1_num + dst2_num + dst3_num + dst4_num
+ 
+             end if
+ 
++        if ( .not. enable_dst_num_cirrus ) then
++             dst_num = 0.0_r8
++        end if
++
+             ! *** Turn off soot nucleation ***
+             soot_num = 0.0_r8
+ 
+@@ -735,8 +740,13 @@ subroutine nucleate_ice_cam_calc( &
+                ptend%q(i,k,cnum_idx) = -(odst_num * icldm(i,k))/rho(i,k)/1e-6_r8/dtime
+                cld_num_coarse(i,k)   = cld_num_coarse(i,k) + (odst_num * icldm(i,k))/rho(i,k)/1e-6_r8
+ 
+-               ptend%q(i,k,cdst_idx) = - odst_num / dst_num * icldm(i,k) * coarse_dust(i,k) / dtime
+-               cld_coarse_dust(i,k) = cld_coarse_dust(i,k) + odst_num / dst_num *icldm(i,k) * coarse_dust(i,k)
++               if ( .not. enable_dst_num_cirrus ) then
++                  ptend%q(i,k,cdst_idx) = 0.0_r8
++                  cld_coarse_dust(i,k) = 0.0_r8
++               else
++                  ptend%q(i,k,cdst_idx) = - odst_num / dst_num * icldm(i,k) * coarse_dust(i,k) / dtime
++                  cld_coarse_dust(i,k) = cld_coarse_dust(i,k) + odst_num / dst_num *icldm(i,k) * coarse_dust(i,k)
++               end if
+             end if
+ 
+             ! Liu&Penner does not generate enough nucleation in the polar winter

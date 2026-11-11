@@ -1,0 +1,68 @@
+diff --git a/src/physics/cam/hetfrz_classnuc_cam.F90 b/src/physics/cam/hetfrz_classnuc_cam.F90
+index 8de3fa96..f9f3fb12 100644
+--- a/src/physics/cam/hetfrz_classnuc_cam.F90
++++ b/src/physics/cam/hetfrz_classnuc_cam.F90
+@@ -30,6 +30,8 @@ use error_messages, only: handle_errmsg, alloc_err
+ use cam_abortutils, only: endrun
+ 
+ use hetfrz_classnuc,   only: hetfrz_classnuc_init, hetfrz_classnuc_calc
++use micro_dv_nml, only: hclas_du_imm, hclas_du_dep, hclas_du_cnt, hclas_bc_imm, hclas_bc_dep, hclas_bc_cnt
++
+ 
+ implicit none
+ private
+@@ -208,6 +210,7 @@ subroutine hetfrz_classnuc_cam_init(mincld_in)
+ 
+    ! This parameterization currently assumes that prognostic modal aerosols are on.  Check...
+    call phys_getopts(prog_modal_aero_out=prog_modal_aero)
++
+    if (.not. prog_modal_aero) call endrun(routine//': cannot use hetfrz_classnuc without prognostic modal aerosols')
+ 
+    mincld = mincld_in
+@@ -613,6 +616,7 @@ subroutine hetfrz_classnuc_cam_calc( &
+ 
+    real(r8) :: qcic
+    real(r8) :: ncic
++   real(r8) :: nicic                   ! in-cloud ice number [#/kg] (limfacdu_niemand_singular)
+ 
+    real(r8) :: frzbcimm(pcols,pver), frzduimm(pcols,pver)
+    real(r8) :: frzbccnt(pcols,pver), frzducnt(pcols,pver)
+@@ -639,6 +643,7 @@ subroutine hetfrz_classnuc_cam_calc( &
+       t     => state%t,                 &
+       qc    => state%q(:pcols,:pver,cldliq_idx), &
+       nc    => state%q(:pcols,:pver,numliq_idx), &
++      ni    => state%q(:pcols,:pver,numice_idx), &
+       pmid  => state%pmid               )
+ 
+    itim_old = pbuf_old_tim_idx()
+@@ -779,6 +784,7 @@ subroutine hetfrz_classnuc_cam_calc( &
+          if (t(i,k) > 235.15_r8 .and. t(i,k) < 269.15_r8) then
+             qcic = min(qc(i,k)/lcldm(i,k), 5.e-3_r8)
+             ncic = max(nc(i,k)/lcldm(i,k), 0._r8)
++            nicic = max(ni(i,k)/lcldm(i,k), 0._r8)
+ 
+             con1 = 1._r8/(1.333_r8*pi)**0.333_r8
+             r3lx = con1*(rho(i,k)*qcic/(rhoh2o*max(ncic*rho(i,k), 1.0e6_r8)))**0.333_r8 ! in m
+@@ -796,7 +802,8 @@ subroutine hetfrz_classnuc_cam_calc( &
+ 
+             call hetfrz_classnuc_calc( &
+                deltatin,  t(i,k),  pmid(i,k),  supersatice,   &
+-               fn,  r3lx,  ncic*rho(i,k)*1.0e-6_r8,  frzbcimm(i,k),  frzduimm(i,k),   &
++               fn,  r3lx,  ncic*rho(i,k)*1.0e-6_r8,  nicic*rho(i,k)*1.0e-6_r8, &
++               frzbcimm(i,k),  frzduimm(i,k),   &
+                frzbccnt(i,k),  frzducnt(i,k),  frzbcdep(i,k),  frzdudep(i,k),  hetraer(i,k,:), &
+                awcam(i,k,:), awfacm(i,k,:), dstcoat(i,k,:), total_aer_num(i,k,:),  &
+                coated_aer_num(i,k,:), uncoated_aer_num(i,k,:), total_interstitial_aer_num(i,k,:), &
+@@ -804,9 +811,9 @@ subroutine hetfrz_classnuc_cam_calc( &
+ 
+             call handle_errmsg(errstring, subname="hetfrz_classnuc_calc")
+ 
+-            frzimm(i,k) = frzbcimm(i,k) + frzduimm(i,k)
+-            frzcnt(i,k) = frzbccnt(i,k) + frzducnt(i,k)
+-            frzdep(i,k) = frzbcdep(i,k) + frzdudep(i,k)
++            frzimm(i,k) = hclas_bc_imm*frzbcimm(i,k) + hclas_du_imm*frzduimm(i,k)
++            frzcnt(i,k) = hclas_bc_cnt*frzbccnt(i,k) + hclas_du_cnt*frzducnt(i,k)
++            frzdep(i,k) = hclas_bc_dep*frzbcdep(i,k) + hclas_du_dep*frzdudep(i,k)
+ 
+             if (frzimm(i,k) > 0._r8) freqimm(i,k) = 1._r8
+             if (frzcnt(i,k) > 0._r8) freqcnt(i,k) = 1._r8
