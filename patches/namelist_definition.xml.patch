@@ -1,54 +1,12 @@
 diff --git a/bld/namelist_files/namelist_definition.xml b/bld/namelist_files/namelist_definition.xml
-index 37a56902..9c17c06a 100644
+index 37a56902..872a721f 100644
 --- a/bld/namelist_files/namelist_definition.xml
 +++ b/bld/namelist_files/namelist_definition.xml
-@@ -2401,6 +2401,16 @@ This default is set in cospsimulator_intr.F90
- Default: 1
- </entry>
- 
-+<entry id="cosp_15m" type="logical"  category="cosp"
-+       group="cospsimulator_nl" valid_values="">
-+If true, decouple COSP from the radiation call counter and instead call
-+cospsimulator_intr_run every physics timestep from physpkg. Radiation continues
-+to run at its normal interval (iradsw); only the optical depths and solar/emissivity
-+fields needed by COSP are stored in the physics buffer after each radiation call.
-+This default is set in cospsimulator_intr.F90
-+Default: FALSE
-+</entry>
-+
- <entry id="cosp_lfrac_out" type="logical"  category="cosp"
-        group="cospsimulator_nl" valid_values="">
- Turns on sub-column output from COSP.
-@@ -7747,4 +7757,391 @@ List of filepaths for dataset for offline unit driver.
+@@ -7747,4 +7747,159 @@ List of filepaths for dataset for offline unit driver.
  Default: none
  </entry>
  
-+<entry id="detrainment_ramp_liq" type="logical" category="conv"
-+       group="micro_dv_nl" valid_values="" >
-+Turn all detrainment (CLUBB and macroP) to liquid instead of 30dg ramp.
-+Default: .false. Overridden when detr_mpc_ice_frac >= 0.
-+</entry>
-+
-+<entry id="detr_mpc_ice_frac" type="real" category="conv"
-+       group="micro_dv_nl" valid_values="" >
-+Fixed ice fraction for convective detrainment in the mixed-phase corridor (238.15-268.15 K).
-+0.0 = all liquid, 1.0 = all ice, x = x*ice + (1-x)*liquid. Warm (T>268.15K) and cold (T&lt;238.15K)
-+regimes are unaffected. When >= 0.0, overrides detrainment_ramp_liq.
-+Default: -1.0 (disabled; falls back to detrainment_ramp_liq then linear T ramp).
-+</entry>
-+
-+<entry id="depr_point_frz" type="logical" category="conv"
-+       group="micro_dv_nl" valid_values="" >
-+Enable freezing point depression effect in heterogeneous freezing nucleation
-+Default: .true.
-+</entry>
-+<entry id="frz_assume_ramp_rhce" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+only matters if depr_point_frz false, otherwise overwriten. When .true., assumes a ramped ice supersaturation for the critical germ size calculation in immersion freezing.
-+The ramped value follows a linear interpolation from 1.10 at -10°C to 1.34 at -30°C. Outside this range, the actual
-+ice supersaturation (supersatice) is used. This allows for tuning of heterogeneous freezing rates.
-+Default: .false.
-+</entry>
++<!-- 🧊🔧 micro_dv_nl: dust-ice limiter and sensitivity controls of the letter runs -->
 +
 +<entry id="enable_nimax" type="logical" category="conv"
 +       group="micro_dv_nl" valid_values="" >
@@ -56,122 +14,59 @@ index 37a56902..9c17c06a 100644
 +Default: .true.
 +</entry>
 +
-+<entry id="enable_nimax_only_cirrus" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+🧊🔧 Enable the ice-number limiter below -37 C (T &lt; 236.15 K) independently of enable_nimax.
-+🧊📏 When enable_nimax is true, the limiter remains enabled at all temperatures.
-+🔧📘 Default: .false.
-+</entry>
-+
-+<entry id="enable_nimax_ceiling_adj" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+🧊📏 Add (nnucct+nnuccc+nnudep)*lcldm*deltat to nimax when the summed source is positive.
-+🔧📘 This option adjusts the ceiling but does not independently enable the limiter.
-+🔧📘 Default: .false.
-+</entry>
-+
-+
-+
-+<entry id="bimm" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+B factor for immersion freezing in pumas/micro_pumas_utils.F90
-+Default: 100
-+</entry>
-+<entry id="onoff_contact_freezing" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+controls contact freezing in pumas/micro_pumas_utils.F90
-+Default: true
-+</entry>
-+<entry id="onoff_sip" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+controls hallet mossop in pumas/micro_pumas_utils.F90
-+Default: true
-+</entry>
 +<entry id="naai_het_also_in_mpc" type="logical" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
 +controls naai (deposition) nucleation in mpc clouds
 +Default: true
 +</entry>
-+<entry id="enable_dst_num_cirrus" type="logical" category="microphys"
++
++<entry id="limfacdu" type="real" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+Enables dst_num enter normally into cirrus nucleation, if false, set to 0 (no indirect effect on cirrus)
-+Default: true
-+</entry>
-+<entry id="rain_freeze" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+controls freezing of rain in pumas
-+Default: true
++limit dust aerosol N for ice nucleation
++Default: 5%
 +</entry>
 +
-+<entry id="fi_factor" type="real" category="microphys"
++<entry id="limfacdu_niemand_singular" type="logical" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+factor for changing ice fall speed (cirrus)
-+Default: 1
-+</entry>
-+<entry id="fi_factor_mpc" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+factor for changing ice fall speed (mpc)
-+Default: 1
-+</entry>
-+<entry id="zm_frz" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+factor for changing how ice crystal number decreases with sublimation
-+Default: 1
-+</entry>
-+<entry id="micro_mg_ice_sub_eff_factor" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+factor for changing how ice crystal number decreases with sublimation
-+Default: 1
-+</entry>
-+<entry id="micro_mg_ice_dep_eff_factor" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+factor for changing how ice crystal number decreases with sublimation
-+Default: 1
-+</entry>
-+<entry id="micro_mg_ice_berg_ice_factor" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+factor for bergeron ice process
-+Default: 1
-+</entry>
-+<entry id="micro_mg_ice_berg_snow_factor" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+factor for bergeron snow process
-+Default: 1
-+</entry>
-+<entry id="berg_to_snow_masspp" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+If higher than 0, all ice from bergeron_ice will be put into snow instead. No matter if no snow was present. The number of snow created will be a derived from the mass per particle=berg_to_snow_masspp.
-+berg_to_snow_masspp should be somewhere around 10 microg = 10e-9 => berg_to_snow_masspp=1e-8 (see Mass of different snow crystal shapes derived from fall speed measurements)
-+Default: 0
-+</entry>
-+<entry id="berg_to_snow_fraction" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+If higher than 0, all ice from bergeron_ice will be put into snow instead. No matter if no snow was present. The number of snow created will be a fraction=berg_to_snow_fraction from the cloud ice number.
-+berg_to_snow_fraction should be somewhere around 1% (so that the snow is about 100 time slarger and depletes the cloud)
-+Default: 0
-+</entry>
-+<entry id="sublim_factor" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+factor for changing how ice crystal number decreases with sublimation
-+Default: 0
-+</entry>
-+<entry id="sublim_factor_mpc_ni" type="real" category="microphys"
-+    group="micro_dv_nl" valid_values="" >
-+    factor for changing how ice crystal number decreases with sublimation in mpc
-+    Default: 0
-+</entry>
-+<entry id="sublim_factor_mpc_tot" type="real" category="microphys"
-+    group="micro_dv_nl" valid_values="" >
-+    factor for changing how total ice decreases with sublimation in mpc
-+    Default: 1
++If .true., dust immersion freezing uses Niemand et al. (2012) as a standalone
++singular (time-independent) scheme instead of CNT/PDF: the number of immersed dust
++particles active at T, sum over modes of MIN(factor*FF(T,r), max/100)*N_dust,
++minus the in-cloud ice number already present, is frozen within one step
++(ECHAM-HAM approach). Uses limfacdu_niemand_factor/max; set
++limfacdu_niemand_max=100 for an uncapped FF.
++BC immersion and dust contact/deposition freezing stay CNT.
++Default: .false.
 +</entry>
 +
-+<entry id="factor_HM" type="real" category="microphys"
-+    group="micro_dv_nl" valid_values="" >
-+    factor for changing homogeneous nucleation
-+    Default: 1
++<entry id="limfacdu_niemand_continuous" type="logical" category="microphys"
++       group="micro_dv_nl" valid_values="" >
++If .true., dust immersion freezing uses Niemand et al. (2012) as a standalone
++continuous scheme: every step, sum over modes of MIN(factor*FF(T,r), max/100)*N_dust
++is frozen, without subtracting the in-cloud ice number already present (unlike
++limfacdu_niemand_singular). Takes precedence over limfacdu_niemand_singular.
++Uses limfacdu_niemand_factor/max. BC immersion and dust contact/deposition stay CNT.
++Default: .false.
 +</entry>
 +
++<entry id="limfacdu_niemand_factor" type="real" category="microphys"
++       group="micro_dv_nl" valid_values="" >
++Correction factor multiplying the Niemand frozen fraction FF(T,r) before the
++limfacdu_niemand_max cap is applied (limiter = MIN(factor*FF, max/100)).
++Default: 1.0
++</entry>
++
++<entry id="limfacdu_niemand_max" type="real" category="microphys"
++       group="micro_dv_nl" valid_values="" >
++Overall cap on the Niemand frozen fraction of the dust when
++limfacdu_niemand_singular or limfacdu_niemand_continuous is true [percent].
++Default: 100.0 (no cap)
++</entry>
++
++<entry id="depr_point_frz" type="logical" category="conv"
++       group="micro_dv_nl" valid_values="" >
++Enable freezing point depression effect in heterogeneous freezing nucleation
++Default: .true.
++</entry>
 +
 +<entry id="hclas_du_imm" type="real" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
@@ -209,177 +104,46 @@ index 37a56902..9c17c06a 100644
 +Default: 1
 +</entry>
 +
-+<entry id="hclas_max_t_imm" type="real" category="microphys"
++<entry id="onoff_contact_freezing" type="logical" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+maximum temperature where immersion freezing is active for het nucleation in classical nucleation file
-+Default: 263
-+</entry>
-+<entry id="hclas_min_t_imm" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+lower temperature bound for ALL immersion freezing (dust_a1, dust_a3, BC) in classical nucleation scheme [K].
-+Below this temperature frzimm and frzbcimm are set to zero. Default: 150.0 (effectively off).
-+Set to 231.15 to confine all immersion freezing to the mixed-phase regime (T > -42 C).
-+</entry>
-+<entry id="cirr_dst_fact" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Factor applied to dust number concentration in cirrus nucleation calculations
-+Default: 1.0
++controls contact freezing in pumas/micro_pumas_utils.F90
++Default: true
 +</entry>
 +
-+<entry id="cirr_soot_fact" type="real" category="microphys"
++<entry id="onoff_sip" type="logical" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+Factor applied to soot number concentration in cirrus nucleation calculations
-+Default: 1.0
++controls hallet mossop in pumas/micro_pumas_utils.F90
++Default: true
 +</entry>
 +
-+<entry id="cirr_hom_fact" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Multiplier on homogeneous freezing ice number (nihf) in cirrus nucleation, applied after subgrid fraction fhom
-+Default: 1.0
++<entry id="factor_HM" type="real" category="microphys"
++    group="micro_dv_nl" valid_values="" >
++    factor for changing homogeneous nucleation
++    Default: 1
 +</entry>
 +
-+<entry id="hom_frz_qc_early" type="logical" category="microphys"
++<entry id="rain_freeze" type="logical" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+If .true., MG2 homogeneously freezes cloud water at T &lt; 233.15 K before computing
-+process rates (25 micron ice), so Bergeron and riming never act on liquid at cirrus temperatures.
++controls freezing of rain in pumas
++Default: true
++</entry>
++
++<entry id="detrainment_ramp_liq" type="logical" category="conv"
++       group="micro_dv_nl" valid_values="" >
++Turn all detrainment (CLUBB and macroP) to liquid instead of 30dg ramp.
 +Default: .false.
 +</entry>
 +
-+<entry id="berg_in_cirrus" type="logical" category="microphys"
++<entry id="micro_mg_ice_berg_ice_factor" type="real" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+If .false., zero the MG2 Bergeron rates (berg: liquid to ice, bergs: liquid to snow)
-+for T &lt; 233.15 K, so supercooled liquid in cirrus is only removed by homogeneous freezing.
-+Default: .true.
++factor for bergeron ice process
++Default: 1
 +</entry>
 +
-+<entry id="cirr_preice_fact" type="real" category="microphys"
++<entry id="micro_mg_ice_berg_snow_factor" type="real" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+Multiplier on preexisting ice contribution (Ni_preice) to total cirrus nucleated number
-+Default: 1.0
-+</entry>
-+
-+<entry id="hclas_min_t_imm_coarse" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+minimum temperature for immersion freezing of coarse particles
-+Default: 231.15 K (-42°C)
-+</entry>
-+
-+<entry id="tc_ramp_top" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Cold temperature limit for heterogeneous freezing rate temperature ramp [C]
-+Below this temperature, actual temperature is used in freezing calculations.
-+Default: -42
-+</entry>
-+
-+<entry id="tc_ramp_bot" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Warm temperature limit for heterogeneous freezing rate temperature ramp [C]
-+Above this temperature, minimum apparent temperature is used in freezing calculations.
-+Default: -6
-+</entry>
-+
-+<entry id="tc_apparent_ramp_top" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Apparent temperature at the cold boundary of the freezing rate temperature ramp [C]
-+Used in classical nucleation theory calculations below tc_ramp_top.
-+Default: -42 (for obs set to -24)
-+</entry>
-+
-+<entry id="tc_apparent_ramp_bot" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Apparent temperature at the warm boundary of the freezing rate temperature ramp [C]
-+Used in classical nucleation theory calculations above tc_ramp_bot.
-+Default: -6 (for obs set to -18)
-+</entry>
-+
-+<entry id="limfacdu" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+limit dust aerosol N for ice nucleation
-+Default: 5%
-+</entry>
-+
-+<entry id="limfacdu_niemand" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Replace the constant limfacdu dust immersion-freezing limiter by the Niemand et al. (2012)
-+frozen fraction FF(T,r) = 1 - exp(-4*pi*r^2*n_s(T)), n_s(T) = exp(-a*(T-273.15)+b), with
-+T floored at 233 K and n_s = 0 below 233 K. r is the per-mode dust radius (hetraer).
-+The result is capped at limfacdu_niemand_max percent. Only the limiter changes; the
-+physical freezing rate is still CNT/PDF.
-+Default: .false.
-+</entry>
-+
-+<entry id="limfacdu_niemand_max" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Overall cap on the dust fraction that may freeze per microphysics substep when
-+limfacdu_niemand is true [percent].
-+Default: 100.0 (no cap)
-+</entry>
-+
-+<entry id="limfacdu_niemand_a" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Slope a in n_s(T) = exp(-a*(T-273.15)+b) [1/K] for limfacdu_niemand.
-+Niemand et al. (2012) original 0.517; ECHAM-HAM tuned value 1.0.
-+Default: 0.517
-+</entry>
-+
-+<entry id="limfacdu_niemand_b" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Intercept b in n_s(T) = exp(-a*(T-273.15)+b) [ln(m-2)] for limfacdu_niemand.
-+Niemand et al. (2012) original 8.934; ECHAM-HAM tuned value 5.0.
-+Default: 8.934
-+</entry>
-+
-+<entry id="limfacdu_niemand_factor" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Correction factor multiplying the Niemand frozen fraction FF(T,r) before the
-+limfacdu_niemand_max cap is applied (limiter = MIN(factor*FF, max/100)).
-+Default: 1.0
-+</entry>
-+
-+<entry id="limfacdu_niemand_singular" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+If .true., dust immersion freezing uses Niemand et al. (2012) as a standalone
-+singular (time-independent) scheme instead of CNT/PDF: the number of immersed dust
-+particles active at T, sum over modes of MIN(factor*FF(T,r), max/100)*N_dust,
-+minus the in-cloud ice number already present, is frozen within one step
-+(ECHAM-HAM approach). Uses limfacdu_niemand_a/b/factor/max; set
-+limfacdu_niemand_max=100 for an uncapped FF. Independent of limfacdu_niemand.
-+BC immersion and dust contact/deposition freezing stay CNT.
-+Default: .false.
-+</entry>
-+
-+<entry id="limfacdu_niemand_continuous" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+If .true., dust immersion freezing uses Niemand et al. (2012) as a standalone
-+continuous scheme: every step, sum over modes of MIN(factor*FF(T,r), max/100)*N_dust
-+is frozen, without subtracting the in-cloud ice number already present (unlike
-+limfacdu_niemand_singular). Takes precedence over limfacdu_niemand_singular.
-+Uses limfacdu_niemand_a/b/factor/max. BC immersion and dust contact/deposition stay CNT.
-+Default: .false.
-+</entry>
-+
-+<entry id="du_background" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Background dust number concentration
-+Default: 0.0
-+</entry>
-+
-+
-+<entry id="back_drop_perc_per_hour" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Background dust freezing per hour [%/hr]
-+Default: 0.0
-+</entry>
-+<entry id="theta_imm_dust" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Contact angle for dust immersion freezing [degrees]
-+Default: 46.0
-+</entry>
-+
-+<entry id="theta_imm_dust_a3" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Contact angle for dust_a3 (coarse) immersion freezing [degrees]. Microcline from Chang 2024.
-+Default: 9.63
++factor for bergeron snow process
++Default: 1
 +</entry>
 +
 +<entry id="auto_liq_factor" type="real" category="microphys"
@@ -389,25 +153,12 @@ index 37a56902..9c17c06a 100644
 +Default: 1.0
 +</entry>
 +
-+<entry id="auto_ice_factor" type="real" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Multiplier applied to ice autoconversion rate (prci, nprci) for sensitivity tuning.
-+Default: 1.0
-+</entry>
-+
 +<entry id="riming_factor" type="real" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
 +Multiplier applied to snow riming rate (psacws, npsacws) for sensitivity tuning.
 +Scaling occurs before the Hallett-Mossop secondary ice call, so H-M splinter
 +production is also proportionally affected.
 +Default: 1.0
-+</entry>
-+
-+<entry id="avoid_nuc_blowup" type="logical" category="microphys"
-+       group="micro_dv_nl" valid_values="" >
-+Cap wbar1/wbar2 at 0.2 m/s inside nucleati when use_preexisting_ice=.false. to prevent
-+runaway nucleation crash. Also initialises wpice and weff to safe defaults.
-+Default: .false.
 +</entry>
 +
  </namelist_definition>

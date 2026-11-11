@@ -1,157 +1,49 @@
 diff --git a/src/physics/cam/micro_mg_cam.F90 b/src/physics/cam/micro_mg_cam.F90
-index 3a6ddcf6..d303fa2e 100644
+index 3a6ddcf6..962ef77c 100644
 --- a/src/physics/cam/micro_mg_cam.F90
 +++ b/src/physics/cam/micro_mg_cam.F90
-@@ -366,6 +366,7 @@ subroutine micro_mg_cam_readnl(nlfile)
-   call mpi_bcast(micro_mg_ninst, 1, mpi_real8, mstrid, mpicom, ierr)
-   if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: micro_mg_ninst")
- 
-+
-   if (masterproc) then
- 
-      write(iulog,*) 'MG microphysics namelist:'
-@@ -384,6 +385,7 @@ subroutine micro_mg_cam_readnl(nlfile)
-      write(iulog,*) '  micro_mg_nicons             = ', micro_mg_nicons
-      write(iulog,*) '  micro_mg_ncnst              = ', micro_mg_ncnst
-      write(iulog,*) '  micro_mg_ninst              = ', micro_mg_ninst
-+
-   end if
- 
- contains
-@@ -764,16 +766,19 @@ subroutine micro_mg_cam_init(pbuf2d)
-    call addfld ('QISEVAP',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of sublimation of falling cloud ice'                )
-    call addfld ('QVRES',      (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of residual condensation term'                      )
-    call addfld ('CMEIOUT',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of deposition/sublimation of cloud ice'             )
-+
-    call addfld ('VTRMC',      (/ 'lev' /), 'A', 'm/s',      'Mass-weighted cloud water fallspeed'                     )
-    call addfld ('VTRMI',      (/ 'lev' /), 'A', 'm/s',      'Mass-weighted cloud ice fallspeed'                       )
-    call addfld ('QCSEDTEN',   (/ 'lev' /), 'A', 'kg/kg/s',  'Cloud water mixing ratio tendency from sedimentation'    )
-    call addfld ('QISEDTEN',   (/ 'lev' /), 'A', 'kg/kg/s',  'Cloud ice mixing ratio tendency from sedimentation'      )
-    call addfld ('PRAO',       (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud water by rain'                        )
-    call addfld ('PRCO',       (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud water'                           )
-+
-    call addfld ('MNUCCCO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Immersion freezing of cloud water'                       )
-    call addfld ('MNUCCTO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Contact freezing of cloud water'                         )
-    call addfld ('MNUCCDO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Homogeneous and heterogeneous nucleation from vapor'     )
-    call addfld ('MNUCCDOhet', (/ 'lev' /), 'A', 'kg/kg/s',  'Heterogeneous nucleation from vapor'                     )
-+
-    call addfld ('MSACWIO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water from rime-splintering'         )
-    call addfld ('PSACWSO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud water by snow'                        )
-    call addfld ('BERGSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Conversion of cloud water to snow from bergeron'         )
-@@ -807,12 +812,51 @@ subroutine micro_mg_cam_init(pbuf2d)
-    call addfld ('ICWNC',      (/ 'lev' /), 'A', 'm-3',      'Prognostic in-cloud water number conc'                   )
-    call addfld ('ICINC',      (/ 'lev' /), 'A', 'm-3',      'Prognostic in-cloud ice number conc'                     )
-    call addfld ('EFFLIQ_IND', (/ 'lev' /), 'A','Micron',    'Prognostic droplet effective radius (indirect effect)'   )
--   call addfld ('CDNUMC',     horiz_only,  'A', '1/m2',     'Vertically-integrated droplet concentration'             )
-    call addfld ('MPICLWPI',   horiz_only,  'A', 'kg/m2',    'Vertically-integrated &
-         &in-cloud Initial Liquid WP (Before Micro)' )
+@@ -813,6 +813,40 @@ subroutine micro_mg_cam_init(pbuf2d)
     call addfld ('MPICIWPI',   horiz_only,  'A', 'kg/m2',    'Vertically-integrated &
          &in-cloud Initial Ice WP (Before Micro)'    )
  
-+   call addfld ('CDNUMC',     horiz_only,  'A', '1/m2',     'Vertically-integrated droplet concentration'             )
-+   call addfld ('ICNUMC',     horiz_only,  'A', '1/m2',     'Vertically-integrated ice crystal concentration'         )
-+   call addfld ('SCNUMC',     horiz_only,  'A', '1/m2',     'Vertically-integrated snow crystal concentration'         )
-+   call addfld ('RDNUMC',     horiz_only,  'A', '1/m2',     'Vertically-integrated rain droplet concentration'         )
-+   call addfld ('CDMASS',     horiz_only,  'A', 'kg/m2',     'Vertically-integrated in-cloud droplet MR'         )
-+   call addfld ('ICMASS',     horiz_only,  'A', 'kg/m2',     'Vertically-integrated in-cloud ice crystal MR'         )
-+   call addfld ('SCMASS',     horiz_only,  'A', 'kg/m2',     'Vertically-integrated snow crystal MR'         )
-+   call addfld ('RDMASS',     horiz_only,  'A', 'kg/m2',     'Vertically-integrated rain droplet MR'         )
-+   
-+   call addfld ('BERGO_PATH',  horiz_only,  'A', 'kg/m2/s',  'Vertically-integrated Bergeron process (a variant)' )
-+   call addfld ('BERGSO_PATH', horiz_only,  'A', 'kg/m2/s',  'Vertically-integrated Bergeron process' )
-+   call addfld ('QCTEN_PATH',  horiz_only,  'A', 'kg/m2/s',  'Vertically-integrated cloud water tendency' )
-+   call addfld ('QINTEN_PATH', horiz_only,  'A', 'kg/m2/s',  'Vertically-integrated cloud ice tendency' )
-+   call addfld ('NCTEN_PATH',  horiz_only,  'A', '1/m2/s',   'Vertically-integrated cloud water number tendency' )
-+   call addfld ('NINTEN_PATH', horiz_only,  'A', '1/m2/s',   'Vertically-integrated cloud ice number tendency' )
-+   call addfld ('CC_QL_PATH',  horiz_only,  'A', 'kg/m2',    'Vertically-integrated cloud liquid water content' )
-+   call addfld ('CC_QI_PATH',  horiz_only,  'A', 'kg/m2',    'Vertically-integrated cloud ice water content' )
-+   call addfld ('CC_NL_PATH',  horiz_only,  'A', '1/m2',     'Vertically-integrated cloud liquid number concentration' )
-+   call addfld ('CC_NI_PATH',  horiz_only,  'A', '1/m2',     'Vertically-integrated cloud ice number concentration' )
-+   call addfld ('QRTEN_PATH',  horiz_only,  'A', 'kg/m2/s',  'Vertically-integrated rain mixing ratio tendency' )
-+   call addfld ('QSTEN_PATH',  horiz_only,  'A', 'kg/m2/s',  'Vertically-integrated snow mixing ratio tendency' )
-+   call addfld ('NRTEN_PATH',  horiz_only,  'A', '1/m2/s',   'Vertically-integrated rain number tendency' )
-+   call addfld ('NSTEN_PATH',  horiz_only,  'A', '1/m2/s',   'Vertically-integrated snow number tendency' )
-+   call addfld ('FRZIMM_PATH', horiz_only,  'A', '1/m2',     'Vertically-integrated immersion freezing number tendency' )
-+   call addfld ('FRZCNT_PATH', horiz_only,  'A', '1/m2',     'Vertically-integrated contact freezing number tendency' )
-+   call addfld ('FRZDEP_PATH', horiz_only,  'A', '1/m2',     'Vertically-integrated deposition freezing number tendency' )
-+   call addfld('PRAO_PATH',   horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated accretion of cloud water by rain')
-+   call addfld('PSACWSO_PATH',horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated accretion of cloud water by snow')
-+   call addfld('PRAIO_PATH',  horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated accretion of cloud ice by rain')
-+   call addfld('PRCO_PATH',   horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated autoconversion of cloud water')
-+   call addfld('PRCIO_PATH',  horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated autoconversion of cloud ice')
-+   call addfld('PRACSO_PATH', horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated accretion of rain by snow')
-+   call addfld('MELTO_PATH', horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated melting of cloud ice')
-+   call addfld('QCSEVAP_PATH', horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated evaporation of falling cloud water')
-+   call addfld('QISEVAP_PATH', horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated sublimation of falling cloud ice')
-+   call addfld('CMEIOUT_PATH', horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated deposition/sublimation rate of cloud ice')
-+   call addfld('EVPRAIN_ST_PATH', horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated evaporation rate of stratiform rain')
-+   call addfld('EVPSNOW_ST_PATH', horiz_only, 'A', 'kg/m2/s', 'Vertically-integrated evaporation rate of stratiform snow')
-+
++   ! Vertically-integrated hydrometeor numbers and masses, tendencies and process rates
++   call addfld ('ICNUMC',          horiz_only,  'A', '1/m2',    'Vertically-integrated ice crystal concentration')
++   call addfld ('SCNUMC',          horiz_only,  'A', '1/m2',    'Vertically-integrated snow crystal concentration')
++   call addfld ('RDNUMC',          horiz_only,  'A', '1/m2',    'Vertically-integrated rain droplet concentration')
++   call addfld ('CDMASS',          horiz_only,  'A', 'kg/m2',   'Vertically-integrated in-cloud droplet MR')
++   call addfld ('ICMASS',          horiz_only,  'A', 'kg/m2',   'Vertically-integrated in-cloud ice crystal MR')
++   call addfld ('SCMASS',          horiz_only,  'A', 'kg/m2',   'Vertically-integrated snow crystal MR')
++   call addfld ('RDMASS',          horiz_only,  'A', 'kg/m2',   'Vertically-integrated rain droplet MR')
++   call addfld ('BERGO_PATH',      horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated Bergeron process (a variant)')
++   call addfld ('BERGSO_PATH',     horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated Bergeron process')
++   call addfld ('QCTEN_PATH',      horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated cloud water tendency')
++   call addfld ('QINTEN_PATH',     horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated cloud ice tendency')
++   call addfld ('NCTEN_PATH',      horiz_only,  'A', '1/m2/s',  'Vertically-integrated cloud water number tendency')
++   call addfld ('NINTEN_PATH',     horiz_only,  'A', '1/m2/s',  'Vertically-integrated cloud ice number tendency')
++   call addfld ('QRTEN_PATH',      horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated rain mixing ratio tendency')
++   call addfld ('QSTEN_PATH',      horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated snow mixing ratio tendency')
++   call addfld ('NRTEN_PATH',      horiz_only,  'A', '1/m2/s',  'Vertically-integrated rain number tendency')
++   call addfld ('NSTEN_PATH',      horiz_only,  'A', '1/m2/s',  'Vertically-integrated snow number tendency')
++   call addfld ('FRZIMM_PATH',     horiz_only,  'A', '1/m2',    'Vertically-integrated immersion freezing number tendency')
++   call addfld ('FRZCNT_PATH',     horiz_only,  'A', '1/m2',    'Vertically-integrated contact freezing number tendency')
++   call addfld ('FRZDEP_PATH',     horiz_only,  'A', '1/m2',    'Vertically-integrated deposition freezing number tendency')
++   call addfld ('PRAO_PATH',       horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated accretion of cloud water by rain')
++   call addfld ('PSACWSO_PATH',    horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated accretion of cloud water by snow')
++   call addfld ('PRAIO_PATH',      horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated accretion of cloud ice by rain')
++   call addfld ('PRCO_PATH',       horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated autoconversion of cloud water')
++   call addfld ('PRCIO_PATH',      horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated autoconversion of cloud ice')
++   call addfld ('PRACSO_PATH',     horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated accretion of rain by snow')
++   call addfld ('MELTO_PATH',      horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated melting of cloud ice')
++   call addfld ('QCSEVAP_PATH',    horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated evaporation of falling cloud water')
++   call addfld ('QISEVAP_PATH',    horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated sublimation of falling cloud ice')
++   call addfld ('CMEIOUT_PATH',    horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated deposition/sublimation rate of cloud ice')
++   call addfld ('EVPRAIN_ST_PATH', horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated evaporation rate of stratiform rain')
++   call addfld ('EVPSNOW_ST_PATH', horiz_only,  'A', 'kg/m2/s', 'Vertically-integrated evaporation rate of stratiform snow')
 +
     ! This is provided as an example on how to write out subcolumn output
     ! NOTE -- only 'I' should be used for sub-column fields as subc-columns could shift from time-step to time-step
     if (use_subcol_microp) then
-@@ -845,6 +889,10 @@ subroutine micro_mg_cam_init(pbuf2d)
-    call addfld ('ACTREI',      horiz_only,   'A', 'Micron',   'Average Cloud Top ice effective radius'                            )
-    call addfld ('ACTNL',       horiz_only,   'A', 'm-3',   'Average Cloud Top droplet number'                                  )
-    call addfld ('ACTNI',       horiz_only,   'A', 'm-3',   'Average Cloud Top ice number'                                      )
-+   call addfld ('ACTT',        horiz_only,   'I', 'K',    'Stratiform Cloud Top Temperature'                                  )  ! >>DV
-+   call addfld ('ACTP',        horiz_only,   'I', 'Pa',   'Stratiform Cloud Top Pressure'                                    )  ! >>DV
-+   call addfld ('ACT_NITF',   horiz_only,   'I', 'fraction', 'Cloud Top Ice Number Fraction'                                 )  ! >>DV
-+   call addfld ('ACT_ITMF',   horiz_only,   'I', 'fraction', 'Cloud Top Ice Mass Fraction'                                   )  ! >>DV
- 
-    call addfld ('FCTL',        horiz_only,   'A', 'fraction', 'Fractional occurrence of cloud top liquid'                         )
-    call addfld ('FCTI',        horiz_only,   'A', 'fraction', 'Fractional occurrence of cloud top ice'                            )
-@@ -939,11 +987,38 @@ subroutine micro_mg_cam_init(pbuf2d)
-       call add_default ('AREL     ', 1, ' ')
-       call add_default ('AWNC     ', 1, ' ')
-       call add_default ('AWNI     ', 1, ' ')
--      call add_default ('CDNUMC   ', 1, ' ')
-       call add_default ('FREQR    ', 1, ' ')
-       call add_default ('FREQS    ', 1, ' ')
-       call add_default ('FREQL    ', 1, ' ')
-       call add_default ('FREQI    ', 1, ' ')
-+
-+      call add_default ('CDNUMC   ', 1, ' ')
-+      !call add_default ('ICNUMC   ', 1, ' ') !newly implemented by DV
-+      !call add_default ('SCNUMC   ', 1, ' ')
-+      !call add_default ('RDNUMC   ', 1, ' ')
-+      !call add_default ('CDMASS   ', 1, ' ')
-+      !call add_default ('ICMASS   ', 1, ' ')
-+      !call add_default ('SCMASS   ', 1, ' ')
-+      !call add_default ('RDMASS   ', 1, ' ')
-+
-+      !call add_default ('BERGO_PATH', 1, ' ')
-+      !call add_default ('BERGSO_PATH', 1, ' ')
-+      !call add_default ('QCTEN_PATH', 1, ' ')
-+      !call add_default ('QINTEN_PATH', 1, ' ')
-+      !call add_default ('NCTEN_PATH', 1, ' ')
-+      !call add_default ('NINTEN_PATH', 1, ' ')
-+      !call add_default ('CC_QL_PATH', 1, ' ')
-+      !call add_default ('CC_QI_PATH', 1, ' ')
-+      !call add_default ('CC_NL_PATH', 1, ' ')
-+      !call add_default ('CC_NI_PATH', 1, ' ')
-+      !call add_default ('QRTEN_PATH', 1, ' ')
-+      !call add_default ('QSTEN_PATH', 1, ' ')
-+      !call add_default ('NRTEN_PATH', 1, ' ')
-+      !call add_default ('NSTEN_PATH', 1, ' ')
-+      !call add_default ('FRZIMM_PATH', 1, ' ')
-+      !call add_default ('FRZCNT_PATH', 1, ' ')
-+      !call add_default ('FRZDEP_PATH', 1, ' ')
-+
-       do m = 1, ncnst
-          call cnst_get_ind(cnst_names(m), mm)
-          call add_default(cnst_name(mm), 1, ' ')
-@@ -1360,7 +1435,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
-    real(r8), target :: packed_qires(mgncol,nlev)
-    real(r8), target :: packed_mnuccr(mgncol,nlev)
-    real(r8), target :: packed_pracs(mgncol,nlev)
--   real(r8), target :: packed_meltsdt(mgncol,nlev)
-+   real(r8), target :: packed_meltsdt(mgncol,nlev) ! 'Latent heating rate due to melting of snow'
-    real(r8), target :: packed_frzrdt(mgncol,nlev)
-    real(r8), target :: packed_mnuccd(mgncol,nlev)
-    real(r8), target :: packed_nrout(mgncol,nlev)
-@@ -1447,6 +1522,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -1447,6 +1481,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
     real(r8) :: icecldf(state%psetcols,pver) ! Ice cloud fraction
     real(r8) :: liqcldf(state%psetcols,pver) ! Liquid cloud fraction (combined into cloud)
@@ -159,7 +51,7 @@ index 3a6ddcf6..d303fa2e 100644
  
     real(r8), pointer :: rel(:,:)          ! Liquid effective drop radius (microns)
     real(r8), pointer :: rei(:,:)          ! Ice effective drop size (microns)
-@@ -1465,6 +1541,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -1465,6 +1500,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
     real(r8) :: icimrst(state%psetcols,pver) ! In stratus ice mixing ratio
     real(r8) :: icwmrst(state%psetcols,pver) ! In stratus water mixing ratio
@@ -167,183 +59,66 @@ index 3a6ddcf6..d303fa2e 100644
     real(r8) :: icinc(state%psetcols,pver)   ! In cloud ice number conc
     real(r8) :: icwnc(state%psetcols,pver)   ! In cloud water number conc
  
-@@ -1487,10 +1564,53 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
-    real(r8) :: fctsl_grid(pcols)
-    real(r8) :: fctslm_grid(pcols)
- 
--   real(r8) :: cdnumc_grid(pcols)           ! Vertically-integrated droplet concentration
+@@ -1491,6 +1527,40 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
     real(r8) :: icimrst_grid_out(pcols,pver) ! In stratus ice mixing ratio
     real(r8) :: icwmrst_grid_out(pcols,pver) ! In stratus water mixing ratio
  
-+   real(r8) :: cdnumc_grid(pcols)           ! Vertically-integrated droplet concentration
-+   real(r8) :: icnumc_grid(pcols)           ! Vertically-integrated ice conc
-+   real(r8) :: scnumc_grid(pcols)           ! Vertically-integrated snow conc
-+   real(r8) :: rdnumc_grid(pcols)           ! Vertically-integrated rain mass
-+   real(r8) :: cdmass_grid(pcols)           ! Vertically-integrated drop mass
-+   real(r8) :: icmass_grid(pcols)           ! Vertically-integrated ice mass
-+   real(r8) :: scmass_grid(pcols)           ! Vertically-integrated snow mass
-+   real(r8) :: rdmass_grid(pcols)           ! Vertically-integrated rain mass
-+
-+   real(r8) :: bergo_path(pcols)  ! Vertically-integrated Bergeron process (a variant)
-+   real(r8) :: bergso_path(pcols) ! Vertically-integrated Bergeron process
-+   real(r8) :: qcten_path(pcols)  ! Vertically-integrated cloud water tendency
-+   real(r8) :: qinten_path(pcols) ! Vertically-integrated cloud ice tendency
-+   real(r8) :: ncten_path(pcols)  ! Vertically-integrated cloud water number tendency
-+   real(r8) :: niten_path(pcols)  ! Vertically-integrated cloud ice number tendency
-+   real(r8) :: cc_ql_path(pcols)  ! Vertically-integrated cloud liquid water content
-+   real(r8) :: cc_qi_path(pcols)  ! Vertically-integrated cloud ice water content
-+   real(r8) :: cc_nl_path(pcols)  ! Vertically-integrated cloud liquid number content
-+   real(r8) :: cc_ni_path(pcols)  ! Vertically-integrated cloud ice number content
-+
-+   real(r8) :: nrten_path(pcols)  ! Vertically-integrated rain number tendency
-+   real(r8) :: nsten_path(pcols)  ! Vertically-integrated snow number tendency
-+   real(r8) :: qrten_path(pcols)  ! Vertically-integrated rain mass tendency
-+   real(r8) :: qsten_path(pcols)  ! Vertically-integrated snow mass tendency
-+
-+   real(r8) :: frzimm_path(pcols) ! Vertically-integrated immersion freezing number tendency
-+   real(r8) :: frzcnt_path(pcols) ! Vertically-integrated contact freezing number tendency
-+   real(r8) :: frzdep_path(pcols) ! Vertically-integrated deposition freezing number tendency
-+
-+   real(r8) :: prao_path(pcols)   ! Vertically-integrated accretion of cloud water by rain
-+   real(r8) :: psacwso_path(pcols)! Vertically-integrated accretion of cloud water by snow
-+   real(r8) :: praio_path(pcols)  ! Vertically-integrated accretion of cloud ice by rain
-+   real(r8) :: prco_path(pcols)   ! Vertically-integrated autoconversion of cloud water
-+   real(r8) :: prcio_path(pcols)  ! Vertically-integrated autoconversion of cloud ice
-+   real(r8) :: pracso_path(pcols) ! Vertically-integrated accretion of rain by snow
-+
-+   real(r8) :: melto_path(pcols) ! Vertically-integrated melting of cloud ice
-+   real(r8) :: qcsevap_path(pcols) ! Vertically-integrated evaporation of falling cloud water
-+   real(r8) :: qisevap_path(pcols) ! Vertically-integrated sublimation of falling cloud ice
-+   real(r8) :: cmeiout_path(pcols) ! Vertically-integrated deposition/sublimation rate of cloud ice
-+   real(r8) :: evprain_st_path(pcols) ! Vertically-integrated evaporation rate of stratiform rain
-+   real(r8) :: evpsnow_st_path(pcols) ! Vertically-integrated evaporation rate of stratiform snow
-+   
++   ! Vertical integrals for the *NUMC, *MASS and *_PATH history fields
++   real(r8) :: icnumc_grid(pcols)
++   real(r8) :: scnumc_grid(pcols)
++   real(r8) :: rdnumc_grid(pcols)
++   real(r8) :: cdmass_grid(pcols)
++   real(r8) :: icmass_grid(pcols)
++   real(r8) :: scmass_grid(pcols)
++   real(r8) :: rdmass_grid(pcols)
++   real(r8) :: bergo_path(pcols)
++   real(r8) :: bergso_path(pcols)
++   real(r8) :: qcten_path(pcols)
++   real(r8) :: qinten_path(pcols)
++   real(r8) :: ncten_path(pcols)
++   real(r8) :: niten_path(pcols)
++   real(r8) :: qrten_path(pcols)
++   real(r8) :: qsten_path(pcols)
++   real(r8) :: nrten_path(pcols)
++   real(r8) :: nsten_path(pcols)
++   real(r8) :: frzimm_path(pcols)
++   real(r8) :: frzcnt_path(pcols)
++   real(r8) :: frzdep_path(pcols)
++   real(r8) :: prao_path(pcols)
++   real(r8) :: psacwso_path(pcols)
++   real(r8) :: praio_path(pcols)
++   real(r8) :: prco_path(pcols)
++   real(r8) :: prcio_path(pcols)
++   real(r8) :: pracso_path(pcols)
++   real(r8) :: melto_path(pcols)
++   real(r8) :: qcsevap_path(pcols)
++   real(r8) :: qisevap_path(pcols)
++   real(r8) :: cmeiout_path(pcols)
++   real(r8) :: evprain_st_path(pcols)
++   real(r8) :: evpsnow_st_path(pcols)
 +
     ! Cloud fraction used for precipitation.
     real(r8) :: cldmax_grid(pcols,pver)
  
-@@ -1500,6 +1620,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
-    real(r8) :: ctnl_grid(pcols)
-    real(r8) :: ctni_grid(pcols)
-    real(r8) :: fcti_grid(pcols)
-+   real(r8) :: ctt_grid(pcols)     ! >>DV: cloud top temperature
-+   real(r8) :: ctp_grid(pcols)     ! >>DV: cloud top pressure
-+   real(r8) :: acnitf_grid(pcols)  ! >>DV: cloud top ice number fraction
-+   real(r8) :: acitf_grid(pcols)   ! >>DV: cloud top ice mass fraction (ACT_ITMF)
-    real(r8) :: fctl_grid(pcols)
- 
-    real(r8) :: ftem_grid(pcols,pver)
-@@ -1529,6 +1653,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -1529,6 +1599,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
     real(r8) :: icimrst_grid(pcols,pver) ! stratus ice mixing ratio - on grid
     real(r8) :: icwmrst_grid(pcols,pver) ! stratus water mixing ratio - on grid
 +   real(r8) :: ictmrst_grid(pcols,pver) ! stratus total water mixing ratio - on grid
++   real(r8) :: totcldf_grid(pcols,pver) ! total cloud fraction - on grid
  
     real(r8), pointer :: lambdac_grid(:,:)
     real(r8), pointer :: mu_grid(:,:)
-@@ -1540,46 +1665,54 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
-    real(r8), pointer :: des_grid(:,:)
-    real(r8), pointer :: iclwpst_grid(:,:)
+@@ -1576,6 +1648,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
--   real(r8) :: rho_grid(pcols,pver)
--   real(r8) :: liqcldf_grid(pcols,pver)
-+   real(r8) :: rho_grid(pcols,pver) ! air density (kg/m3)(sure?)
-    real(r8) :: qsout_grid(pcols,pver)
-    real(r8) :: ncic_grid(pcols,pver)
-    real(r8) :: niic_grid(pcols,pver)
-    real(r8) :: rel_fn_grid(pcols,pver)    ! Ice effective drop size at fixed number (indirect effect) (microns) - on grid
--   real(r8) :: qrout_grid(pcols,pver)
--   real(r8) :: drout2_grid(pcols,pver)
--   real(r8) :: dsout2_grid(pcols,pver)
--   real(r8) :: nsout_grid(pcols,pver)
--   real(r8) :: nrout_grid(pcols,pver)
--   real(r8) :: reff_rain_grid(pcols,pver)
--   real(r8) :: reff_snow_grid(pcols,pver)
--   real(r8) :: cld_grid(pcols,pver)
--   real(r8) :: pdel_grid(pcols,pver)
--   real(r8) :: prco_grid(pcols,pver)
--   real(r8) :: prao_grid(pcols,pver)
--   real(r8) :: icecldf_grid(pcols,pver)
--   real(r8) :: icwnc_grid(pcols,pver)
--   real(r8) :: icinc_grid(pcols,pver)
--   real(r8) :: qcreso_grid(pcols,pver)
--   real(r8) :: melto_grid(pcols,pver)
--   real(r8) :: mnuccco_grid(pcols,pver)
--   real(r8) :: mnuccto_grid(pcols,pver)
--   real(r8) :: bergo_grid(pcols,pver)
--   real(r8) :: homoo_grid(pcols,pver)
--   real(r8) :: msacwio_grid(pcols,pver)
--   real(r8) :: psacwso_grid(pcols,pver)
--   real(r8) :: bergso_grid(pcols,pver)
--   real(r8) :: cmeiout_grid(pcols,pver)
--   real(r8) :: qireso_grid(pcols,pver)
--   real(r8) :: prcio_grid(pcols,pver)
--   real(r8) :: praio_grid(pcols,pver)
--
--   real(r8) :: nc_grid(pcols,pver)
--   real(r8) :: ni_grid(pcols,pver)
--   real(r8) :: qr_grid(pcols,pver)
--   real(r8) :: nr_grid(pcols,pver)
--   real(r8) :: qs_grid(pcols,pver)
--   real(r8) :: ns_grid(pcols,pver)
-+   real(r8) :: qrout_grid(pcols,pver)       ! Rain water mixing ratio (kg/kg)
-+   real(r8) :: drout2_grid(pcols,pver)      ! Second moment of rain drop size distribution (m^2)
-+   real(r8) :: dsout2_grid(pcols,pver)      ! Second moment of snow size distribution (m^2)
-+   real(r8) :: nsout_grid(pcols,pver)       ! Snow number concentration (1/m^3)
-+   real(r8) :: nrout_grid(pcols,pver)       ! Rain number concentration (1/m^3)
-+   real(r8) :: reff_rain_grid(pcols,pver)   ! Effective radius of rain drops (m)
-+   real(r8) :: reff_snow_grid(pcols,pver)   ! Effective radius of snow particles (m)
-+   real(r8) :: cld_grid(pcols,pver)         ! Cloud fraction (unitless)
-+   real(r8) :: pdel_grid(pcols,pver)        ! Pressure thickness of the layer (Pa)
-+   real(r8) :: prco_grid(pcols,pver) ! autoconversion of cloud water
-+   real(r8) :: prao_grid(pcols,pver) ! accretion of cloud water to rain
-+
-+   real(r8) :: liqcldf_grid(pcols,pver) ! Grid of liquid cloud fraction for each column and vertical level
-+   real(r8) :: icecldf_grid(pcols,pver) ! Grid of ice cloud fraction for each column and vertical level
-+   real(r8) :: totcldf_grid(pcols,pver) ! Grid of total cloud fraction for each column and vertical level
-+   real(r8) :: icwnc_grid(pcols,pver)   ! Grid of ice water number concentration for each column and vertical level
-+   real(r8) :: icinc_grid(pcols,pver)   ! Grid of ice number concentration for each column and vertical level
-+   real(r8) :: qcreso_grid(pcols,pver)  ! Grid of cloud water content for each column and vertical level
-+   real(r8) :: melto_grid(pcols,pver) ! Melting of cloud ice
-+
-+   real(r8) :: mnuccco_grid(pcols,pver) ! Immersion freezing of cloud water
-+   real(r8) :: mnuccto_grid(pcols,pver) ! Contact freezing of cloud water
-+   real(r8) :: homoo_grid(pcols,pver)  
-+
-+   real(r8) :: msacwio_grid(pcols,pver) ! Grid of mixed-phase stratiform cloud water ice output (dimensions: pcols x pver)
-+   real(r8) :: psacwso_grid(pcols,pver) ! Grid of stratiform cloud snow output (dimensions: pcols x pver)
-+   real(r8) :: cmeiout_grid(pcols,pver) ! Grid of cloud microphysics ice output (dimensions: pcols x pver)
-+   real(r8) :: qireso_grid(pcols,pver) ! Grid of ice crystal number concentration output (dimensions: pcols x pver)
-+   real(r8) :: prcio_grid(pcols,pver) ! Grid of precipitation ice output (dimensions: pcols x pver)
-+   real(r8) :: praio_grid(pcols,pver) ! Grid of precipitation rain output (dimensions: pcols x pver)
-+   
-+   real(r8) :: bergo_grid(pcols,pver) ! Grid of Bergeron process output (dimensions: pcols x pver)
-+   real(r8) :: bergso_grid(pcols,pver) ! Grid of Bergeron process snow output (dimensions: pcols x pver)
-+
-+   real(r8) :: nc_grid(pcols,pver) ! Grid of cloud droplet number concentration (dimensions: pcols x pver)
-+   real(r8) :: ni_grid(pcols,pver) ! Grid of ice crystal number concentration (dimensions: pcols x pver)
-+   real(r8) :: qc_grid(pcols,pver) ! Grid of cloud water mixing ratio (dimensions: pcols x pver)
-+   real(r8) :: qi_grid(pcols,pver) ! Grid of ice water mixing ratio (dimensions: pcols x pver)
-+
-+   real(r8) :: nr_grid(pcols,pver) ! Grid of rain drop number concentration (dimensions: pcols x pver)
-+   real(r8) :: ns_grid(pcols,pver) ! Grid of snow number concentration (dimensions: pcols x pver)
-+   real(r8) :: qr_grid(pcols,pver) ! Grid of rain water mixing ratio (dimensions: pcols x pver)
-+   real(r8) :: qs_grid(pcols,pver) ! Grid of snow mixing ratio (dimensions: pcols x pver)
-    
-    real(r8) :: cp_rh(pcols,pver)
-    real(r8) :: cp_t(pcols)
-@@ -1599,7 +1732,9 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
-    real(r8), pointer :: prec_sed_grid(:)
-    real(r8), pointer :: snow_sed_grid(:)
-    real(r8), pointer :: cldo_grid(:,:)
--   real(r8), pointer :: nevapr_grid(:,:)
-+
-+
-+   real(r8), pointer :: nevapr_grid(:,:) ! evaporation rate of falling rain
-    real(r8), pointer :: prain_grid(:,:)
-    real(r8), pointer :: mgflxprc_grid(:,:)
-    real(r8), pointer :: mgflxsnw_grid(:,:)
-@@ -2275,6 +2410,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+    real(r8) :: nc_grid(pcols,pver)
+    real(r8) :: ni_grid(pcols,pver)
++   real(r8) :: qc_grid(pcols,pver)
++   real(r8) :: qi_grid(pcols,pver)
+    real(r8) :: qr_grid(pcols,pver)
+    real(r8) :: nr_grid(pcols,pver)
+    real(r8) :: qs_grid(pcols,pver)
+@@ -2275,6 +2349,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
     icecldf(:ncol,top_lev:pver) = ast(:ncol,top_lev:pver)
     liqcldf(:ncol,top_lev:pver) = ast(:ncol,top_lev:pver)
@@ -351,16 +126,15 @@ index 3a6ddcf6..d303fa2e 100644
  
     ! ------------------------------------------------------------ !
     ! Compute in cloud ice and liquid mixing ratios                !
-@@ -2294,6 +2430,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -2294,6 +2369,7 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
           ! in-cloud mixing ratio maximum limit of 0.005 kg/kg
           icimrst(i,k)   = min( state_loc%q(i,k,ixcldice) / max(mincld,icecldf(i,k)),0.005_r8 )
           icwmrst(i,k)   = min( state_loc%q(i,k,ixcldliq) / max(mincld,liqcldf(i,k)),0.005_r8 )
 +         ictmrst(i,k)   = icimrst(i,k) + icwmrst(i,k)
-+
           icinc(i,k)     = state_loc%q(i,k,ixnumice) / max(mincld,icecldf(i,k)) * &
                state_loc%pmid(i,k) / (287.15_r8*state_loc%t(i,k))
           icwnc(i,k)     = state_loc%q(i,k,ixnumliq) / max(mincld,liqcldf(i,k)) * &
-@@ -2378,8 +2516,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -2378,8 +2454,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
        call subcol_field_avg(praio,     ngrdcol, lchnk, praio_grid)
        call subcol_field_avg(icwmrst,   ngrdcol, lchnk, icwmrst_grid)
        call subcol_field_avg(icimrst,   ngrdcol, lchnk, icimrst_grid)
@@ -371,7 +145,7 @@ index 3a6ddcf6..d303fa2e 100644
        call subcol_field_avg(icwnc,     ngrdcol, lchnk, icwnc_grid)
        call subcol_field_avg(icinc,     ngrdcol, lchnk, icinc_grid)
        call subcol_field_avg(state_loc%pdel,            ngrdcol, lchnk, pdel_grid)
-@@ -2388,6 +2528,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -2388,6 +2466,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
        call subcol_field_avg(state_loc%q(:,:,ixnumliq), ngrdcol, lchnk, nc_grid)
        call subcol_field_avg(state_loc%q(:,:,ixnumice), ngrdcol, lchnk, ni_grid)
@@ -380,7 +154,7 @@ index 3a6ddcf6..d303fa2e 100644
  
        if (micro_mg_version > 1) then
           call subcol_field_avg(cldmax,    ngrdcol, lchnk, cldmax_grid)
-@@ -2444,8 +2586,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -2444,8 +2524,10 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
        praio_grid      = praio
        icwmrst_grid    = icwmrst
        icimrst_grid    = icimrst
@@ -391,7 +165,7 @@ index 3a6ddcf6..d303fa2e 100644
        icwnc_grid      = icwnc
        icinc_grid      = icinc
        pdel_grid       = state_loc%pdel
-@@ -2454,6 +2598,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -2454,6 +2536,8 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
        nc_grid = state_loc%q(:,:,ixnumliq)
        ni_grid = state_loc%q(:,:,ixnumice)
@@ -400,12 +174,10 @@ index 3a6ddcf6..d303fa2e 100644
  
        if (micro_mg_version > 1) then
           cldmax_grid = cldmax
-@@ -2754,9 +2900,222 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -2754,10 +2838,113 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
     ! History Output Fields !
     ! --------------------- !
  
--   ! Column droplet concentration
--   cdnumc_grid(:ngrdcol) = sum(nc_grid(:ngrdcol,top_lev:pver) * &
 +   cdnumc_grid = 0._r8
 +   icnumc_grid = 0._r8
 +   scnumc_grid = 0._r8
@@ -420,10 +192,6 @@ index 3a6ddcf6..d303fa2e 100644
 +   qinten_path = 0._r8
 +   ncten_path = 0._r8
 +   niten_path = 0._r8
-+   cc_ql_path = 0._r8
-+   cc_qi_path = 0._r8
-+   cc_nl_path = 0._r8
-+   cc_ni_path = 0._r8
 +   qrten_path = 0._r8
 +   qsten_path = 0._r8
 +   nrten_path = 0._r8
@@ -444,200 +212,89 @@ index 3a6ddcf6..d303fa2e 100644
 +   evprain_st_path = 0._r8
 +   evpsnow_st_path = 0._r8
 +
-+
-+! Integrated Column hydrometeor concentration (from #/kg)
-+   cdnumc_grid(:ngrdcol) = sum(nc_grid(:ngrdcol,top_lev:pver) * & !ori
-+        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
+    ! Column droplet concentration
+    cdnumc_grid(:ngrdcol) = sum(nc_grid(:ngrdcol,top_lev:pver) * &
+         pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
+ 
++   ! Column hydrometeor numbers [1/m2] and masses [kg/m2], column tendencies and process rates [kg/m2/s, 1/m2/s]
 +   icnumc_grid(:ngrdcol) = sum(ni_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
 +   scnumc_grid(:ngrdcol) = sum(ns_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
 +   rdnumc_grid(:ngrdcol) = sum(nr_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+
 +   cdmass_grid(:ngrdcol) = sum(qc_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
 +   icmass_grid(:ngrdcol) = sum(qi_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
 +   scmass_grid(:ngrdcol) = sum(qs_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
 +   rdmass_grid(:ngrdcol) = sum(qr_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+! Integrated Column hydrometeor mass_tendencies (from kg/kg s-1) -> kg/m2 s-1
-+
-+   !real(r8) :: bergo_grid(pcols,pver)
-+    bergo_path(:ngrdcol) = sum(bergo_grid(:ngrdcol,top_lev:pver) * &
++   bergo_path(:ngrdcol) = sum(bergo_grid(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   bergso_path(:ngrdcol) = sum(bergso_grid(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   qcten_path(:ngrdcol) = sum(qcten(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   qinten_path(:ngrdcol) = sum(qiten(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   ncten_path(:ngrdcol) = sum(ncten(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   niten_path(:ngrdcol) = sum(niten(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   qrten_path(:ngrdcol) = sum(qrten(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   qsten_path(:ngrdcol) = sum(qsten(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   nrten_path(:ngrdcol) = sum(nrten(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   nsten_path(:ngrdcol) = sum(nsten(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +
-+   !real(r8) :: bergso_grid(pcols,pver)
-+    bergso_path(:ngrdcol) = sum(bergso_grid(:ngrdcol,top_lev:pver) * &
++   ! Freezing number tendencies: frz* [cm-3 s-1] * 1.e6 / rho [kg m-3] -> [kg-1 s-1]
++   frzimm_path(:ngrdcol) = sum(frzimm(:ngrdcol,top_lev:pver) * 1.0e6_r8 / rho_grid(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   frzcnt_path(:ngrdcol) = sum(frzcnt(:ngrdcol,top_lev:pver) * 1.0e6_r8 / rho_grid(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++   frzdep_path(:ngrdcol) = sum(frzdep(:ngrdcol,top_lev:pver) * 1.0e6_r8 / rho_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +
-+!   if (.false.) then
-+      !real(r8), target :: qcten(state%psetcols,pver)
-+       qcten_path(:ngrdcol) = sum(qcten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+      !real(r8), target :: qiten(state%psetcols,pver)
-+       qinten_path(:ngrdcol) = sum(qiten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+      !real(r8), target :: ncten(state%psetcols,pver)
-+       ncten_path(:ngrdcol) = sum(ncten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+      !real(r8), target :: niten(state%psetcols,pver)
-+       niten_path(:ngrdcol) = sum(niten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+
-+      !real(r8), target :: qrten(state%psetcols,pver)
-+      qrten_path(:ngrdcol) = sum(qrten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+      !real(r8), target :: qsten(state%psetcols,pver)
-+      qsten_path(:ngrdcol) = sum(qsten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+      !real(r8), target :: nrten(state%psetcols,pver)
-+      nrten_path(:ngrdcol) = sum(nrten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+      !real(r8), target :: nsten(state%psetcols,pver)
-+      nsten_path(:ngrdcol) = sum(nsten(:ngrdcol,top_lev:pver) * &
-+           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+! wrong dimensions
-+!      !real(r8), pointer :: CC_ql(:,:)        ! Grid-mean microphysical tendency
-+!      cc_ql_path(:ngrdcol) = sum(CC_ql(:ngrdcol,top_lev:pver) * &
-+!           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!      !real(r8), pointer :: CC_qi(:,:)        ! Grid-mean microphysical tendency
-+!      cc_qi_path(:ngrdcol) = sum(CC_qi(:ngrdcol,top_lev:pver) * &
-+!           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!      !real(r8), pointer :: CC_nl(:,:)        ! Grid-mean microphysical tendency
-+!      cc_nl_path(:ngrdcol) = sum(CC_nl(:ngrdcol,top_lev:pver) * &
-+!           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!      !real(r8), pointer :: CC_ni(:,:)        ! Grid-mean microphysical tendency
-+!      cc_ni_path(:ngrdcol) = sum(CC_ni(:ngrdcol,top_lev:pver) * &
-+!           pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+! Integrated Column hydrometeor mass (from mr)
-+   ! CC_ql_grid and CC_qi_grid have different dimensions
-+   !cdmass_grid(:ngrdcol) = sum(CC_ql_grid(:ngrdcol,top_lev:pver) * &
-+   !     pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+   !icmass_grid(:ngrdcol) = sum(CC_qi_grid(:ngrdcol,top_lev:pver) * &
-+   !     pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+!   end if
-+
-+! Average Column hydrometeor properties (from 1 cm-3 s-1) -> 1 m-2 s-1
-+
-+  !real(r8) :: rho_grid(pcols,pver)
-+                !nnuccc(:,k) = frzimm(:,k)*1.0e6_r8/rho(:,k) ! n concentration tendency; mi0l implies that nnuccc is n/kg (pumas)
-+                !mnuccc(:,k) = nnuccc(:,k)*mi0l              ! mixing ratio tendency ; mi0l is mass per crystal in kg (pumas)
-+
-+                    ! this implies frzimm_mr_tend=frzimm*1.0e6_r8/rho(:,:) ; frzimm_mr_tend should be then in n kg-1 s-1
-+
-+                    ! 1.0e6_r8 converts cm-3 to m-3 ; rho_grid to m-3 to kg-1
-+
-+   !real(r8), pointer :: frzimm(:,:) !!! Number tendency due to immersion freezing [cm-3 s-1]
-+    frzimm_path(:ngrdcol) = sum(frzimm(:ngrdcol,top_lev:pver) * 1.0e6_r8 / rho_grid(:ngrdcol,top_lev:pver) * &
-+            pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+   !real(r8), pointer :: frzcnt(:,:) !!! Number tendency due to contact freezing (1/cm3)
-+   
-+    frzcnt_path(:ngrdcol) = sum(frzcnt(:ngrdcol,top_lev:pver) * 1.0e6_r8 / rho_grid(:ngrdcol,top_lev:pver) * &
-+            pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+   !real(r8), pointer :: frzdep(:,:) !!! Number tendency due to deposition nucleation (1/cm3)
-+      frzdep_path(:ngrdcol) = sum(frzdep(:ngrdcol,top_lev:pver) * 1.0e6_r8 / rho_grid(:ngrdcol,top_lev:pver) * &
-+            pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+    !2m conversion rates (IMPLEMENTING)
-+
-+!    ! Accretion/Autoconv
-+!   call addfld ('PRAO',       (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud water by rain'                        )
-+    prao_path(:ngrdcol) = sum(prao_grid(:ngrdcol,top_lev:pver) * &
++   prao_path(:ngrdcol) = sum(prao_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('PSACWSO',    (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud water by snow'                        )
-+    psacwso_path(:ngrdcol) = sum(psacwso_grid(:ngrdcol,top_lev:pver) * &
++   psacwso_path(:ngrdcol) = sum(psacwso_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('PRAIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of cloud ice by rain'                          )
-+    praio_path(:ngrdcol) = sum(praio_grid(:ngrdcol,top_lev:pver) * &
++   praio_path(:ngrdcol) = sum(praio_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('PRCO',       (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud water'                           )
-+    prco_path(:ngrdcol) = sum(prco_grid(:ngrdcol,top_lev:pver) * &
-         pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('PRCIO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Autoconversion of cloud ice'                             )
-+    prcio_path(:ngrdcol) = sum(prcio_grid(:ngrdcol,top_lev:pver) * &
++   prco_path(:ngrdcol) = sum(prco_grid(:ngrdcol,top_lev:pver) * &
 +        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('PRACSO',     (/ 'lev' /), 'A', 'kg/kg/s',  'Accretion of rain by snow'                               )
++   prcio_path(:ngrdcol) = sum(prcio_grid(:ngrdcol,top_lev:pver) * &
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +   pracso_path(:ngrdcol) = sum(pracso(:ngrdcol,top_lev:pver) * &
-+      pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+
-+
-+!    ! Melt, sub and dep
-+!!! melto_path qcsevap_path qisevap_path cmeiout_path evprain_st_path evpsnow_st_path
-+!   call addfld ('MELTO',      (/ 'lev' /), 'A', 'kg/kg/s',  'Melting of cloud ice'                                    )
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +   melto_path(:ngrdcol) = sum(melto(:ngrdcol,top_lev:pver) * &
-+      pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('QCSEVAP',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of evaporation of falling cloud water'              )
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +   qcsevap_path(:ngrdcol) = sum(qcsevap(:ngrdcol,top_lev:pver) * &
-+      pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('QISEVAP',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of sublimation of falling cloud ice'                )
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +   qisevap_path(:ngrdcol) = sum(qisevap(:ngrdcol,top_lev:pver) * &
-+      pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!   call addfld ('CMEIOUT',    (/ 'lev' /), 'A', 'kg/kg/s',  'Rate of deposition/sublimation of cloud ice'             )
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +   cmeiout_path(:ngrdcol) = sum(cmeiout(:ngrdcol,top_lev:pver) * &
-+      pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+!!! 
-+! Evaporation rate of stratiform rain [kg/kg/s]
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +   evprain_st_path(:ngrdcol) = sum(evprain_st_grid(:ngrdcol,top_lev:pver) * &
-+      pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
-+! Evaporation rate of stratiform snow [kg/kg/s]
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +   evpsnow_st_path(:ngrdcol) = sum(evpsnow_st_grid(:ngrdcol,top_lev:pver) * &
-+   pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
++        pdel_grid(:ngrdcol,top_lev:pver)/gravit, dim=2)
 +
-+!!! to IMPLEMENT
-+!!! PREC_STR SNOW_STR PREC_SED SNOW_SED PREC_PCW SNOW_PCW
-+   ! precipitation rates at surface
-+   !prec_str_idx = pbuf_get_index('PREC_STR')
-+   !snow_str_idx = pbuf_get_index('SNOW_STR')
-+   !prec_sed_idx = pbuf_get_index('PREC_SED')
-+   !snow_sed_idx = pbuf_get_index('SNOW_SED')
-+   !prec_pcw_idx = pbuf_get_index('PREC_PCW')
-+   !snow_pcw_idx = pbuf_get_index('SNOW_PCW')
-+
-+
-+   ! To implement
-+
-+   !real(r8), target :: vtrmc(state%psetcols,pver)      ! Mass-weighted cloud water fallspeed
-+   !real(r8), target :: vtrmi(state%psetcols,pver)      ! Mass-weighted cloud ice fallspeed
-+   !real(r8), target :: umr(state%psetcols,pver)        ! Mass-weighted rain fallspeed
-+   !real(r8), target :: ums(state%psetcols,pver)        ! Mass-weighted snow fallspeed
-+
-+   !real(r8), target :: qcsedten(state%psetcols,pver)   ! Cloud water mixing ratio tendency from sedimentation
-+   !real(r8), target :: qisedten(state%psetcols,pver)   ! Cloud ice mixing ratio tendency from sedimentation
-+   !real(r8), target :: qrsedten(state%psetcols,pver)   ! Rain mixing ratio tendency from sedimentation
-+   !real(r8), target :: qssedten(state%psetcols,pver)   ! Snow mixing ratio tendency from sedimentation
-+    
- 
     ! Averaging for new output fields
     efcout_grid      = 0._r8
-@@ -2810,14 +3169,35 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
-    fctm_grid  = 0._r8
-    fctsl_grid = 0._r8
-    fctslm_grid= 0._r8
-+   ctt_grid    = 1.e36_r8   ! >>DV: R_UNDEF fill; set only when cloud top is found
-+   ctp_grid    = 1.e36_r8   ! >>DV
-+   acnitf_grid = 1.e36_r8   ! >>DV
-+   acitf_grid  = 1.e36_r8   ! >>DV
+    efiout_grid      = 0._r8
+@@ -2813,11 +3000,17 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
  
     do i = 1, ngrdcol
        do k = top_lev, pver
 -         if ( liqcldf_grid(i,k) > 0.01_r8 .and. icwmrst_grid(i,k) > 1.e-7_r8 ) then
-+         !if ( liqcldf_grid(i,k) > 0.01_r8 .and. icwmrst_grid(i,k) > 1.e-7_r8 ) ! original
++         ! Cloud top is the first layer with total (liquid + ice) in-cloud water above 1.e-5 kg/kg;
++         ! liquid and ice cloud-top properties are taken from this same layer.
 +         if ( totcldf_grid(i,k) > 0.01_r8 .and. ictmrst_grid(i,k) > 1.e-5_r8 ) then
              ctrel_grid(i) = rel_grid(i,k) * liqcldf_grid(i,k)
              ctnl_grid(i)  = icwnc_grid(i,k) * liqcldf_grid(i,k)
@@ -646,104 +303,60 @@ index 3a6ddcf6..d303fa2e 100644
 +            ctrei_grid(i) = rei_grid(i,k) * icecldf_grid(i,k)
 +            ctni_grid(i)  = icinc_grid(i,k) * icecldf_grid(i,k)
 +            fcti_grid(i)  = icecldf_grid(i,k)
-+            ctt_grid(i)   = state_loc%t(i,k)     ! >>DV: cloud top temperature
-+            ctp_grid(i)   = state_loc%pmid(i,k)  ! >>DV: cloud top pressure
-+            ! >>DV: ACT_NITF = ACTNI / (ACTNL + ACTNI)
-+            if (ctni_grid(i) + ctnl_grid(i) > 0._r8) then
-+               acnitf_grid(i) = ctni_grid(i) / (ctni_grid(i) + ctnl_grid(i))
-+            end if
-+            ! >>DV: ACT_ITMF = in-cloud ice mass / (ice + liquid) at cloud top
-+            ! icecldf == liqcldf == ast always in MG, so cloud fractions cancel;
-+            ! must use mixing ratios to get a meaningful ice mass fraction.
-+            if (icimrst_grid(i,k) + icwmrst_grid(i,k) > 0._r8) then
-+               acitf_grid(i) = icimrst_grid(i,k) / (icimrst_grid(i,k) + icwmrst_grid(i,k))
-+            end if
 +
              ! Cloud Top Mixed phase, supercooled liquid only and supercooled liquid mixed
              if (freqi_grid(i,k) > 0.01_r8) then
                 fctm_grid(i)=min(liqcldf_grid(i,k),icecldf_grid(i,k))
-@@ -2832,12 +3212,14 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -2831,13 +3024,6 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+ 
              exit
           end if
- 
+-
 -         if ( icecldf_grid(i,k) > 0.01_r8 .and. icimrst_grid(i,k) > 1.e-7_r8 ) then
 -            ctrei_grid(i) = rei_grid(i,k) * icecldf_grid(i,k)
 -            ctni_grid(i)  = icinc_grid(i,k) * icecldf_grid(i,k)
 -            fcti_grid(i)  = icecldf_grid(i,k)
 -            exit
 -         end if
-+         ! >>DV : replaced
-+         !if ( icecldf_grid(i,k) > 0.01_r8 .and. icimrst_grid(i,k) > 1.e-7_r8 ) 
-+         !   ctrei_grid(i) = rei_grid(i,k) * icecldf_grid(i,k)
-+         !   ctni_grid(i)  = icinc_grid(i,k) * icecldf_grid(i,k)
-+         !   fcti_grid(i)  = icecldf_grid(i,k)
-+         !   exit
-+         !end if
-+         ! >>DV : replaced
        end do
     end do
  
-@@ -2978,12 +3360,15 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
-    call outfld('ACTREI',      ctrei_grid,       pcols, lchnk)
-    call outfld('ACTNL',       ctnl_grid,        pcols, lchnk)
-    call outfld('ACTNI',       ctni_grid,        pcols, lchnk)
-+   call outfld('ACTT',        ctt_grid,         pcols, lchnk)  ! >>DV
-+   call outfld('ACTP',        ctp_grid,         pcols, lchnk)  ! >>DV
-+   call outfld('ACT_NITF',   acnitf_grid,      pcols, lchnk)  ! >>DV
-+   call outfld('ACT_ITMF',   acitf_grid,        pcols, lchnk)  ! >>DV
-    call outfld('FCTL',        fctl_grid,        pcols, lchnk)
-    call outfld('FCTI',        fcti_grid,        pcols, lchnk)
-    call outfld('ICINC',       icinc_grid,       pcols, lchnk)
-    call outfld('ICWNC',       icwnc_grid,       pcols, lchnk)
-    call outfld('EFFLIQ_IND',  rel_fn_grid,      pcols, lchnk)
--   call outfld('CDNUMC',      cdnumc_grid,      pcols, lchnk)
-    call outfld('REL',         rel_grid,         pcols, lchnk)
-    call outfld('REI',         rei_grid,         pcols, lchnk)
-    call outfld('MG_SADICE',   sadice_grid,      pcols, lchnk)
-@@ -3011,6 +3396,47 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
+@@ -3011,6 +3197,39 @@ subroutine micro_mg_cam_tend_pack(state, ptend, dtime, pbuf, mgncol, mgcols, nle
     call outfld('FCTSL',       fctsl_grid,       pcols, lchnk)
     call outfld('FCTSLM',      fctslm_grid,      pcols, lchnk)
  
-+   call outfld('CDNUMC',      cdnumc_grid,      pcols, lchnk)
-+   call outfld('ICNUMC',      icnumc_grid,      pcols, lchnk)
-+   call outfld('SCNUMC',      scnumc_grid,      pcols, lchnk)
-+   call outfld('RDNUMC',      rdnumc_grid,      pcols, lchnk)
-+   call outfld('CDMASS',      cdmass_grid,      pcols, lchnk)
-+   call outfld('ICMASS',      icmass_grid,      pcols, lchnk)
-+   call outfld('SCMASS',      scmass_grid,      pcols, lchnk)
-+   call outfld('RDMASS',      rdmass_grid,      pcols, lchnk)
-+
-+   call outfld('BERGO_PATH',  bergo_path,       pcols, lchnk)
-+   call outfld('BERGSO_PATH', bergso_path,      pcols, lchnk)
-+   call outfld('QCTEN_PATH',  qcten_path,       pcols, lchnk)
-+   call outfld('QINTEN_PATH', qinten_path,      pcols, lchnk)
-+   call outfld('NCTEN_PATH',  ncten_path,       pcols, lchnk)
-+   call outfld('NINTEN_PATH', niten_path,       pcols, lchnk)
-+   call outfld('CC_QL_PATH',  cc_ql_path,       pcols, lchnk)
-+   call outfld('CC_QI_PATH',  cc_qi_path,       pcols, lchnk)
-+   call outfld('CC_NL_PATH',  cc_nl_path,       pcols, lchnk)
-+   call outfld('CC_NI_PATH',  cc_ni_path,       pcols, lchnk)
-+   call outfld('QRTEN_PATH',  qrten_path,       pcols, lchnk)
-+   call outfld('QSTEN_PATH',  qsten_path,       pcols, lchnk)
-+   call outfld('NRTEN_PATH',  nrten_path,       pcols, lchnk)
-+   call outfld('NSTEN_PATH',  nsten_path,       pcols, lchnk)
-+   call outfld('FRZIMM_PATH', frzimm_path,      pcols, lchnk)
-+   call outfld('FRZCNT_PATH', frzcnt_path,      pcols, lchnk)
-+   call outfld('FRZDEP_PATH', frzdep_path,      pcols, lchnk)
-+   call outfld('PRAO_PATH',   prao_path,        pcols, lchnk)
-+   call outfld('PSACWSO_PATH', psacwso_path,    pcols, lchnk)
-+   call outfld('PRAIO_PATH',  praio_path,       pcols, lchnk)
-+   call outfld('PRCO_PATH',   prco_path,        pcols, lchnk)
-+   call outfld('PRCIO_PATH',  prcio_path,       pcols, lchnk)
-+   call outfld('PRACSO_PATH', pracso_path,      pcols, lchnk)
-+   call outfld('MELTO_PATH',  melto_path,       pcols, lchnk)
-+   call outfld('QCSEVAP_PATH', qcsevap_path,    pcols, lchnk)
-+   call outfld('QISEVAP_PATH', qisevap_path,    pcols, lchnk)
-+   call outfld('CMEIOUT_PATH', cmeiout_path,    pcols, lchnk)
-+   call outfld('EVPRAIN_ST_PATH', evprain_st_path, pcols, lchnk)
-+   call outfld('EVPSNOW_ST_PATH', evpsnow_st_path, pcols, lchnk)
-+
-+
++   call outfld('ICNUMC',          icnumc_grid,      pcols, lchnk)
++   call outfld('SCNUMC',          scnumc_grid,      pcols, lchnk)
++   call outfld('RDNUMC',          rdnumc_grid,      pcols, lchnk)
++   call outfld('CDMASS',          cdmass_grid,      pcols, lchnk)
++   call outfld('ICMASS',          icmass_grid,      pcols, lchnk)
++   call outfld('SCMASS',          scmass_grid,      pcols, lchnk)
++   call outfld('RDMASS',          rdmass_grid,      pcols, lchnk)
++   call outfld('BERGO_PATH',      bergo_path,       pcols, lchnk)
++   call outfld('BERGSO_PATH',     bergso_path,      pcols, lchnk)
++   call outfld('QCTEN_PATH',      qcten_path,       pcols, lchnk)
++   call outfld('QINTEN_PATH',     qinten_path,      pcols, lchnk)
++   call outfld('NCTEN_PATH',      ncten_path,       pcols, lchnk)
++   call outfld('NINTEN_PATH',     niten_path,       pcols, lchnk)
++   call outfld('QRTEN_PATH',      qrten_path,       pcols, lchnk)
++   call outfld('QSTEN_PATH',      qsten_path,       pcols, lchnk)
++   call outfld('NRTEN_PATH',      nrten_path,       pcols, lchnk)
++   call outfld('NSTEN_PATH',      nsten_path,       pcols, lchnk)
++   call outfld('FRZIMM_PATH',     frzimm_path,      pcols, lchnk)
++   call outfld('FRZCNT_PATH',     frzcnt_path,      pcols, lchnk)
++   call outfld('FRZDEP_PATH',     frzdep_path,      pcols, lchnk)
++   call outfld('PRAO_PATH',       prao_path,        pcols, lchnk)
++   call outfld('PSACWSO_PATH',    psacwso_path,     pcols, lchnk)
++   call outfld('PRAIO_PATH',      praio_path,       pcols, lchnk)
++   call outfld('PRCO_PATH',       prco_path,        pcols, lchnk)
++   call outfld('PRCIO_PATH',      prcio_path,       pcols, lchnk)
++   call outfld('PRACSO_PATH',     pracso_path,      pcols, lchnk)
++   call outfld('MELTO_PATH',      melto_path,       pcols, lchnk)
++   call outfld('QCSEVAP_PATH',    qcsevap_path,     pcols, lchnk)
++   call outfld('QISEVAP_PATH',    qisevap_path,     pcols, lchnk)
++   call outfld('CMEIOUT_PATH',    cmeiout_path,     pcols, lchnk)
++   call outfld('EVPRAIN_ST_PATH', evprain_st_path,  pcols, lchnk)
++   call outfld('EVPSNOW_ST_PATH', evpsnow_st_path,  pcols, lchnk)
 +
     if (micro_mg_adjust_cpt) then
        cp_rh(:ncol, :pver)  = 0._r8

@@ -1,128 +1,42 @@
 diff --git a/src/physics/cam/micro_mg2_0.F90 b/src/physics/cam/micro_mg2_0.F90
-index bfa717ac..a27eb03e 100644
+index bfa717ac..fe87fb94 100644
 --- a/src/physics/cam/micro_mg2_0.F90
 +++ b/src/physics/cam/micro_mg2_0.F90
-@@ -133,6 +133,12 @@ use micro_mg_utils, only: &
+@@ -133,6 +133,10 @@ use micro_mg_utils, only: &
       mi0, &
       rising_factorial
  
-+use micro_dv_nml, only: fi_factor, fi_factor_mpc, sublim_factor, sublim_factor_mpc_ni, &
-+                                micro_mg_ice_berg_ice_factor, micro_mg_ice_berg_snow_factor, &
-+                            berg_to_snow_masspp, naai_het_also_in_mpc , detrainment_ramp_liq, detr_mpc_ice_frac, enable_nimax, &
-+                            enable_nimax_only_cirrus, enable_nimax_ceiling_adj, &
-+                            auto_liq_factor, auto_ice_factor, riming_factor, berg_in_cirrus, hom_frz_qc_early
++use micro_dv_nml, only: micro_mg_ice_berg_ice_factor, micro_mg_ice_berg_snow_factor, &
++                        naai_het_also_in_mpc, detrainment_ramp_liq, enable_nimax, &
++                        auto_liq_factor, riming_factor
 +
  implicit none
  private
  save
-@@ -177,7 +183,7 @@ real(r8) :: dcs
- real(r8), parameter :: mi0l_min = 4._r8/3._r8*pi*rhow*(4.e-6_r8)**3
- 
- ! Ice number sublimation parameter. Assume some decrease in ice number with sublimation if non-zero. Else, no decrease in number with sublimation. 
--  real(r8), parameter :: sublim_factor =0.0_r8      !number sublimation factor.  
-+!  real(r8), parameter :: sublim_factor =0.0_r8      !number sublimation factor.  
- 
- 
- !=========================================================
-@@ -663,6 +669,8 @@ subroutine micro_mg_tend ( &
-   real(r8) :: minstsm(mgncol,nlev)    ! mass mixing ratio
-   real(r8) :: ninstsm(mgncol,nlev)    ! number concentration
-   ! Instantaneous rain freezing
-+  real(r8) :: mhomqc(mgncol,nlev)     ! DV: cloud water frozen early by hom_frz_qc_early (kg/kg)
-+  real(r8) :: nhomqc(mgncol,nlev)     ! DV: droplet number removed by hom_frz_qc_early (1/kg)
-   real(r8) :: minstrf(mgncol,nlev)    ! mass mixing ratio
-   real(r8) :: ninstrf(mgncol,nlev)    ! number concentration
- 
-@@ -711,6 +719,7 @@ subroutine micro_mg_tend ( &
-   ! autoconversion of cloud ice to snow
-   real(r8) :: prci(mgncol,nlev)   ! mass mixing ratio
-   real(r8) :: nprci(mgncol,nlev)  ! number concentration
-+  real(r8) :: nbergs_number(mgncol,nlev)  ! number concentration for wbf
-   ! accretion of cloud ice by snow
-   real(r8) :: prai(mgncol,nlev)   ! mass mixing ratio
-   real(r8) :: nprai(mgncol,nlev)  ! number concentration
-@@ -1115,7 +1124,9 @@ subroutine micro_mg_tend ( &
+@@ -1115,7 +1119,9 @@ subroutine micro_mg_tend ( &
  
    if (do_cldice) then
       where (naai > 0._r8 .and. t < icenuct .and. &
 -          relhum*esl/esi > 1.05_r8)
 +          relhum*esl/esi > 1.05_r8 .and. &
-+            ( naai_het_also_in_mpc .or. t < 233.15_r8 ))
-+               !if naai_het_also_in_mpc is false; proceed only if cirrus temp
++          ( naai_het_also_in_mpc .or. t < 233.15_r8 ))
++        ! if naai_het_also_in_mpc is false, proceed only at cirrus temperatures
  
          !if NAAI > 0. then set numice = naai (as before)
          !note: this is gridbox averaged
-@@ -1214,6 +1225,39 @@ subroutine micro_mg_tend ( &
-      end do
-   end do 
+@@ -1339,6 +1345,11 @@ subroutine micro_mg_tend ( &
+             qric(:,k),rho(:,k),relvar(:,k),prc(:,k),nprc(:,k),nprc1(:,k), mgncol)     
+      endif	  
  
-+  ! DV: hom_frz_qc_early freezes cloud water below -40 C before the process rates,
-+  ! so Bergeron/riming never act on liquid at cirrus temperatures. Same limiter and
-+  ! 25 micron ice size as the post-sedimentation homogeneous freezing below.
-+  mhomqc = 0._r8
-+  nhomqc = 0._r8
-+  if (hom_frz_qc_early) then
-+     do k=1,nlev
-+        do i=1,mgncol
-+           if (t(i,k)+tlat(i,k)/cpp*deltat < 233.15_r8 .and. qc(i,k) > 0._r8) then
-+              dum = qc(i,k)*xlf/cpp
-+              if (t(i,k)+tlat(i,k)/cpp*deltat+dum > 233.15_r8) then
-+                 dum = -(t(i,k)+tlat(i,k)/cpp*deltat-233.15_r8)*cpp/xlf
-+                 dum = dum/qc(i,k)
-+                 dum = max(0._r8,dum)
-+                 dum = min(1._r8,dum)
-+              else
-+                 dum = 1._r8
-+              end if
-+
-+              mhomqc(i,k) = dum*qc(i,k)
-+              nhomqc(i,k) = dum*nc(i,k)
-+              homotot(i,k) = mhomqc(i,k)/deltat
-+              tlat(i,k) = tlat(i,k)+xlf*mhomqc(i,k)/deltat
-+
-+              qc(i,k) = max(qc(i,k) - mhomqc(i,k), 0._r8)
-+              nc(i,k) = max(nc(i,k) - nhomqc(i,k), 0._r8)
-+              qi(i,k) = qi(i,k) + mhomqc(i,k)
-+              ni(i,k) = ni(i,k) + 3._r8*mhomqc(i,k)/(4._r8*3.14_r8*1.563e-14_r8*500._r8)
-+           end if
-+        end do
-+     end do
-+  end if
-+
-   do k=1,nlev
-     do i=1,mgncol
-         ! obtain in-cloud values of cloud water/ice mixing ratios and number concentrations
-@@ -1333,11 +1377,16 @@ subroutine micro_mg_tend ( &
-      call size_dist_param_basic(mg_ice_props, qiic(:,k), niic(:,k), &
-           lami(:,k), mgncol, n0=n0i(:,k))
- 	  
--     ! Alternative autoconversion 
-+     ! Alternative autoconversion
-      if (do_sb_physics) then
-        call sb2001v2_liq_autoconversion(pgam(:,k),qcic(1:mgncol,k),ncic(:,k), &
--            qric(:,k),rho(:,k),relvar(:,k),prc(:,k),nprc(:,k),nprc1(:,k), mgncol)     
--     endif	  
-+            qric(:,k),rho(:,k),relvar(:,k),prc(:,k),nprc(:,k),nprc1(:,k), mgncol)
-+     endif
-+
 +     ! Scale liquid autoconversion rate and number by tuning factor
 +     prc(:,k)   = prc(:,k)   * auto_liq_factor
 +     nprc(:,k)  = nprc(:,k)  * auto_liq_factor
 +     nprc1(:,k) = nprc1(:,k) * auto_liq_factor
- 
++
       !.......................................................................
       ! Autoconversion of cloud ice to snow
-@@ -1346,6 +1395,9 @@ subroutine micro_mg_tend ( &
-      if (do_cldice) then
-         call ice_autoconversion(t(:,k), qiic(:,k), lami(:,k), n0i(:,k), &
-              dcs, prci(:,k), nprci(:,k), mgncol)
-+        ! Scale ice autoconversion rate and number by tuning factor
-+        prci(:,k)  = prci(:,k)  * auto_ice_factor
-+        nprci(:,k) = nprci(:,k) * auto_ice_factor
-      else
-         ! Add in the particles that we have already converted to snow, and
-         ! don't do any further autoconversion of ice.
-@@ -1486,6 +1538,10 @@ subroutine micro_mg_tend ( &
+      ! similar to Ferrier (1994)
+@@ -1486,6 +1497,10 @@ subroutine micro_mg_tend ( &
            qcic(1:mgncol,k), ncic(:,k), qsic(:,k), pgam(:,k), lamc(:,k), lams(:,k), n0s(:,k), &
            psacws(:,k), npsacws(:,k), mgncol)
  
@@ -133,144 +47,43 @@ index bfa717ac..a27eb03e 100644
       if (do_cldice) then
          call secondary_ice_production(t(:,k), psacws(:,k), msacwi(:,k), nsacwi(:,k), mgncol)
       else
-@@ -1528,7 +1584,13 @@ subroutine micro_mg_tend ( &
+@@ -1528,7 +1543,7 @@ subroutine micro_mg_tend ( &
            qvl(:,k), qvi(:,k), asn(:,k), qcic(1:mgncol,k), qsic(:,k), lams(:,k), n0s(:,k), &
            bergs(:,k), mgncol)
  
 -     bergs(:,k)=bergs(:,k)*micro_mg_berg_eff_factor
-+     !bergs(:,k)=bergs(:,k)*micro_mg_berg_eff_factor
 +     bergs(:,k)=bergs(:,k)*micro_mg_berg_eff_factor*micro_mg_ice_berg_snow_factor
-+
-+     ! DV: berg_in_cirrus=.false. shuts off Bergeron (liquid->snow) below homogeneous freezing
-+     if (.not. berg_in_cirrus) then
-+        where (t(:,k) < 233.15_r8) bergs(:,k) = 0._r8
-+     end if
  
       !+++PMC 12/3/12 - NEW VAPOR DEP/SUBLIMATION GOES HERE!!!
       if (do_cldice) then
-@@ -1538,9 +1600,32 @@ subroutine micro_mg_tend ( &
+@@ -1538,6 +1553,7 @@ subroutine micro_mg_tend ( &
               berg(:,k), vap_dep(:,k), ice_sublim(:,k), mgncol)
  
          berg(:,k)=berg(:,k)*micro_mg_berg_eff_factor
 +        berg(:,k)=berg(:,k)*micro_mg_berg_eff_factor*micro_mg_ice_berg_ice_factor
-+
-+        ! DV: berg_in_cirrus=.false. shuts off Bergeron (liquid->ice) below homogeneous freezing
-+        if (.not. berg_in_cirrus) then
-+           where (t(:,k) < 233.15_r8) berg(:,k) = 0._r8
-+        end if
-+
-+         if (berg_to_snow_masspp > 0._r8) then
-+            !put ice bergerson rate to snow instead of to ice
-+            bergs(:,k)=bergs(:,k)+berg(:,k)
-+            berg(:,k)=0._r8
-+            !create new snow number based on new snow mass, assuming a fix mass per snow particle
-+            nbergs_number(:,k)=bergs(:,k)/berg_to_snow_masspp
-+            ! It should be:
-+            !nbergs_number(:,k)=nbergs_number(:,k)+bergs(:,k)/berg_to_snow_masspp
-+         end if 
  
          where (ice_sublim(:,k) < 0._r8 .and. qi(:,k) > qsmall .and. icldm(:,k) > mincld)
--           nsubi(:,k) = sublim_factor*ice_sublim(:,k) / qi(:,k) * ni(:,k) / icldm(:,k)
-+            ! DV: add here a conditional on t(:,k) between tmelt and hom freezing point -40dgC
-+            where ( t(:,k) < tmelt .and. t(:,k) > 233.15_r8 )
-+                ! DV: sublim_factor_mpc_ni=0 by default
-+               nsubi(:,k) = sublim_factor_mpc_ni*ice_sublim(:,k) / qi(:,k) * ni(:,k) / icldm(:,k)
-+            elsewhere
-+                ! sublim_factor=0 by default
-+               nsubi(:,k) = sublim_factor*ice_sublim(:,k) / qi(:,k) * ni(:,k) / icldm(:,k) 
-+            end where
- 
-         elsewhere
-            nsubi(:,k) = 0._r8
-@@ -1971,7 +2056,16 @@ subroutine micro_mg_tend ( &
+            nsubi(:,k) = sublim_factor*ice_sublim(:,k) / qi(:,k) * ni(:,k) / icldm(:,k)
+@@ -1971,7 +1987,8 @@ subroutine micro_mg_tend ( &
          ! note that currently mtime = deltat
          !================================================================
  
 -        if (do_cldice .and. nitend(i,k).gt.0._r8.and.ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
-+        ! 🧊📏 Optionally add the three freezing sources to the existing ceiling.
-+        if (enable_nimax_ceiling_adj .and. do_cldice) then
-+           if (nnucct(i,k)+nnuccc(i,k)+nnudep(i,k).gt.0._r8) then
-+              nimax(i,k) = nimax(i,k)+(nnucct(i,k)+nnuccc(i,k)+nnudep(i,k))*lcldm(i,k)*deltat
-+           end if
-+        end if
-+
-+        ! 🧊🔧 The original switch enables all temperatures; the new switch enables only T < -37 C.
-+        if ((enable_nimax .or. (enable_nimax_only_cirrus .and. t(i,k) < 236.15_r8)) .and. &
-+            do_cldice .and. nitend(i,k).gt.0._r8 .and. ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
++        ! enable_nimax = .false. switches off the ice number limiter
++        if (enable_nimax .and. do_cldice .and. nitend(i,k).gt.0._r8.and.ni(i,k)+nitend(i,k)*deltat.gt.nimax(i,k)) then
             nitend(i,k)=max(0._r8,(nimax(i,k)-ni(i,k))/deltat)
          end if
  
-@@ -2021,6 +2115,17 @@ subroutine micro_mg_tend ( &
-   nc = ncn
-   nctend = nctend + npccn
- 
-+  ! DV: re-apply early homogeneous freezing of cloud water (hom_frz_qc_early)
-+  if (hom_frz_qc_early) then
-+     nctend = nctend - nhomqc/deltat
-+     qctend = qctend + (qc-qcn)/deltat
-+     qc = qcn
-+     qitend = qitend + (qi-qin)/deltat
-+     qi = qin
-+     nitend = nitend + (ni-nin)/deltat
-+     ni = nin
-+  end if
-+
-   ! Re-apply rain freezing and snow melting.
-   dum_2D = qs
-   qs = qsn
-@@ -2149,6 +2254,15 @@ subroutine micro_mg_tend ( &
-            fni(i,k)= 0._r8
-         end if
- 
-+        if (t(i,k) > 238.15_r8) then !if ice in mixed-phase regime
-+          fi(i,k) = fi_factor_mpc*fi(i,k)
-+          fni(i,k) = fi_factor_mpc*fni(i,k)
-+        else
-+          !adjustment of falling velocity for sensitivity
-+          fi(i,k) = fi_factor*fi(i,k)
-+          fni(i,k) = fi_factor*fni(i,k)
-+        end if 
-+
-      enddo
- 
-   enddo
-@@ -2198,6 +2312,15 @@ subroutine micro_mg_tend ( &
-            fns(i,k)=0._r8
-         end if
- 
-+        if (t(i,k) > 238.15_r8) then !if ice in mixed-phase regime
-+              fs(i,k) = fi_factor_mpc*fs(i,k)
-+              fns(i,k) = fi_factor_mpc*fns(i,k)
-+        else
-+          !adjustment of falling velocity for sensitivity
-+              fs(i,k) = fi_factor*fs(i,k)
-+              fns(i,k) = fi_factor*fns(i,k)
-+        end if 
-+
-         ! redefine dummy variables - sedimentation is calculated over grid-scale
-         ! quantities to ensure conservation
- 
-@@ -2671,7 +2794,7 @@ subroutine micro_mg_tend ( &
- 
-                  qitend(i,k)=qitend(i,k)+dum*dumc(i,k)/deltat
-                  ! for output
--                 homotot(i,k)=dum*dumc(i,k)/deltat
-+                 homotot(i,k)=homotot(i,k)+dum*dumc(i,k)/deltat
- 
-                  ! assume 25 micron mean volume radius of homogeneously frozen droplets
-                  ! consistent with size of detrained ice in stratiform.F90
-@@ -2710,7 +2833,13 @@ subroutine micro_mg_tend ( &
+@@ -2710,7 +2727,11 @@ subroutine micro_mg_tend ( &
                else if (ttmp < 238.15_r8) then
                   dum1=1.0_r8
                else
 -                 dum1=(268.15_r8-ttmp)/30._r8
-+                if( detr_mpc_ice_frac >= 0.0_r8 ) then
-+                    dum1 = detr_mpc_ice_frac
-+                elseif( detrainment_ramp_liq ) then
-+                    dum1 = 0.0_r8
-+                else
++                 if ( detrainment_ramp_liq ) then
++                    dum1=0.0_r8   ! liquid only between 238.15 and 268.15 K
++                 else
 +                    dum1=(268.15_r8-ttmp)/30._r8
-+                endif
++                 end if
                end if
  
                dum = (qtmp-qvn)/(1._r8+(xxls*dum1+xxlv*(1._r8-dum1))**2 &
