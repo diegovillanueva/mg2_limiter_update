@@ -82,15 +82,24 @@ cd /path/to/cases/niesing && ./case.build && ./case.submit
 
 | Cut | Reason |
 |---|---|
-| `cospsimulator_intr.F90`, `physpkg.F90`, `radiation.F90` patches, `cosp_15m` | 🛰️ COSP at every time step and CALIPSO cloud-top fields: off by default, no run sets `cosp_15m` or requests the fields |
+| `cospsimulator_intr.F90`, `physpkg.F90`, `radiation.F90` patches, `cosp_15m` | 🛰️ COSP at every time step and CALIPSO cloud-top fields: off by default, no run sets `cosp_15m` or requests the fields; now in `cam6_cosp_calipso_diag` |
 | `micro_mg1_0.F90`, `zm_microphysics.F90` patches | 🚫 MG1 and the Zhang–McFarlane convective microphysics are not active in these CAM6 runs |
 | `nucleate_ice_cam.F90` patch (`enable_dst_num_cirrus`) | 🎚️ switch for dust in cirrus ice nucleation, never set, default `.true.` = stock behaviour |
 | `phys_control.F90`, `zm_conv_intr.F90` patches | 📝 extra lines in `atm.log` only |
 | 33 further `micro_dv_nl` variables (e.g. `limfacdu_niemand`, `tc_ramp_*`, `du_background`, `cirr_*`, `fi_factor*`, `sublim_factor*`, `hom_frz_qc_early`, `auto_ice_factor`, `enable_nimax_only_cirrus`, `detr_mpc_ice_frac`, `theta_imm_dust*`, `hclas_min_t_imm*`, `hclas_max_t_imm`) with their code paths | 🎚️ no run sets them, so the code always took the default path; constants that the kept code still needs are now local parameters with the former default values (Niemand `a = 0.517`, `b = 8.934`, ramp limits −42 °C and −6 °C, contact angle 46°, 263.15 K) |
-| history fields `ACTT`, `ACTP`, `ACT_NITF`, `ACT_ITMF`, `CC_*_PATH` | 📉 not requested by any run |
+| history fields `ACTT`, `ACTP`, `ACT_NITF`, `ACT_ITMF`, `CC_*_PATH` | 📉 not requested by any run; now in `cam6_cosp_calipso_diag` |
 | namelist definitions outside `micro_dv_nl` (`bimm`, `zm_frz`, `micro_mg_ice_sub_eff_factor`, …) | 🧾 no code in the patches reads them |
 
 ⚖️🧊 Kept on purpose although they look redundant: the temperature ramp arithmetic in `hetfrz_classnuc.F90` and the second multiplication by `micro_mg_berg_eff_factor` in `micro_mg2_0.F90`, because removing them could change the results in the last bits.
+
+## 🔗📦 Related repositories
+
+| Repository | Content | Relation to this one |
+|---|---|---|
+| [Sppe_revision_public](https://github.com/diegovillanueva/Sppe_revision_public) (public) | 🧪 the 20 SPPE microphysics controls | 🧱 this repository extends it with the letter code |
+| [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) (private) | 🛰️ COSP every time step (`cosp_15m`), CALIPSO/CloudSat cloud-top fields (`ACTT_CAL`, `ACTP_CAL`, `ACT_ITF_CAL`, `DBZE_CS_*`) and MG2 cloud-top fields (`ACTT`, `ACTP`, `ACT_NITF`, `ACT_ITMF`, `CC_*_PATH`) | ✂️ holds the diagnostics cut here; stacks on this patch set with `apply_patches.sh --on-minimal` |
+
+🔝⚠️ The minimal patch set already changes the cloud-top definition (total condensate), so the stock `ACT*` and `FCT*` diagnostics differ from stock CAM.
 
 ## ✅🧪 Validation
 
