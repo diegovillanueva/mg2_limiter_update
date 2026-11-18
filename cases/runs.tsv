@@ -1,0 +1,10 @@
+run	ice_sources	freezing_rule	cap	limiter	limfacdu_active	hclas_du_imm	enable_nimax	limfacdu	start_date	limfacdu_original	original_case_name
+Default	all	CNT	on	none	no	1 (default)	.true. (default)	1.0 (default)	2000-01-01	1.0 (default)	cesm215.F2000climo.Sppe_ori_h1_ndg
+Default-NoCap	all	CNT	off	0.05	yes	1 (default)	.false.	0.05	2000-01-01	0.051	cesm215.F2000climo.Sppe_ori_h1_nolimit_ndg
+DustOnly-Cap	dust only	CNT	on	none	no	1	.true. (default)	1.0 (default)	2000-01-01	1.0 (default)	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_limit_ndg
+DustOnly-Weak	dust only	CNT	off	0.05	yes	1	.false.	0.05	2000-01-01	0.051	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_ndg
+DustOnly-Strong	dust only	CNT	off	0.05/1000	yes	1	.false.	0.00005	2000-01-01	0.00005	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_lim_du5pd1000_ndg
+DustOnly-NieSing	dust only	Niemand, once per particle	off	existing ice	no	1	.false.	0.05	2000-01-01	0.051	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_lim_du5pd1_niesing_max100_ndg
+DustOnly-NieCont	dust only	Niemand, every step	off	none	no	1	.false.	0.05	2000-01-01	0.051	cesm215.F2000climo.Sppe.rim_p0_auto_p0_h1_lim_du5pd1_niecont_max100_ndg
+DustOnly-NieSing-1979	dust only	Niemand, once per particle	off	existing ice	no	1	.false.	0.05	1979-01-01	0.051	cesm215_sppe.F2000climo.Sppe_niesing_ctd.rim_p0_auto_p0_ndg_1979
+DustOnly-NieSing-NoImm-1979	dust only	none (immersion off)	off	existing ice	no	0	.false.	0.05	1979-01-01	0.051	cesm215_sppe.F2000climo.Sppe_niesing_ctd.rim_p0_auto_p0_noimm_ndg_1979

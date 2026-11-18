@@ -1,0 +1,19 @@
+{
+  "title": "Reconciling droplet freezing parameterizations with cloud top phase and ice number observations: code and run configurations",
+  "version": "1.0.0",
+  "upload_type": "software",
+  "license": "BSD-3-Clause",
+  "creators": [
+    {
+      "name": "Villanueva, Diego",
+      "orcid": "0000-0003-3673-5706",
+      "affiliation": "Institute for Atmospheric and Climate Science, ETH Zurich, Zurich, Switzerland"
+    }
+  ],
+  "keywords": ["CESM2", "CAM6", "MG2 microphysics", "ice nucleation", "mineral dust", "mixed-phase clouds"],
+  "related_identifiers": [
+    {"identifier": "10.1029/2019MS001916", "relation": "references", "scheme": "doi"},
+    {"identifier": "https://github.com/diegovillanueva/Sppe_revision_public", "relation": "isDerivedFrom", "scheme": "url"},
+    {"identifier": "https://github.com/diegovillanueva/cam6_cosp_calipso_diag", "relation": "isSupplementedBy", "scheme": "url"}
+  ]
+}

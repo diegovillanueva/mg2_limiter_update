@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it and the accompanying article."
+title: "Reconciling droplet freezing parameterizations with cloud top phase and ice number observations: code and run configurations"
+version: 1.0.0
+date-released: 2026-11-18
+license: BSD-3-Clause
+repository-code: "https://github.com/diegovillanueva/mg2_limiter_update"
+authors:
+  - family-names: Villanueva
+    given-names: Diego
+    orcid: "https://orcid.org/0000-0003-3673-5706"
+    affiliation: "Institute for Atmospheric and Climate Science, ETH Zurich, Zurich, Switzerland"
+keywords:
+  - CESM2
+  - CAM6
+  - MG2 microphysics
+  - ice nucleation
+  - mineral dust
+  - mixed-phase clouds

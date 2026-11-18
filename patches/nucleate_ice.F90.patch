@@ -1,0 +1,74 @@
+diff --git a/src/physics/cam/nucleate_ice.F90 b/src/physics/cam/nucleate_ice.F90
+index b0053051..48994d6f 100644
+--- a/src/physics/cam/nucleate_ice.F90
++++ b/src/physics/cam/nucleate_ice.F90
+@@ -142,6 +142,7 @@ subroutine nucleati(  &
+    real(r8) :: wpicehet   ! diagnosed Vertical velocity Reduction caused by preexisting ice (m/s), at shet
+ 
+    real(r8) :: weffhet    ! effective Vertical velocity for ice nucleation (m/s)  weff=wbar-wpicehet 
++   real(r8) :: eff_inp_num  ! number of heterogeneous ice nuclei, soot_num + dst_num
+ 
+    logical  :: call_frm_zm
+    !-------------------------------------------------------------------------------
+@@ -216,9 +217,17 @@ subroutine nucleati(  &
+ 
+          if ( ((tc.le.0.0_r8).and.(tc.ge.-37.0_r8).and.(qc.lt.1.e-12_r8)).or.(tc.le.-37.0_r8)) then
+ 
+-            A = -1.4938_r8 * log(soot_num+dst_num) + 12.884_r8
+-            B = -10.41_r8  * log(soot_num+dst_num) - 67.69_r8
+-            regm = A * log(wbar1) + B
++            eff_inp_num = soot_num + dst_num
++
++            ! Without heterogeneous ice nuclei, skip log(0) and force the
++            ! homogeneous-only branch by setting regm >> tc.
++            if (eff_inp_num >= 1.0e-10_r8) then
++               A = -1.4938_r8 * log(eff_inp_num) + 12.884_r8
++               B = -10.41_r8  * log(eff_inp_num) - 67.69_r8
++               regm = A * log(wbar1) + B
++            else
++               regm = 1.0e10_r8
++            end if
+ 
+             ! heterogeneous nucleation only
+             if (tc .gt. regm .or. so4_num < 1.0e-10_r8) then
+@@ -245,13 +254,15 @@ subroutine nucleati(  &
+                   n1        = nihf + niimm
+                else
+ 
+-                  call hetero(tc,wbar2,soot_num+dst_num,niimm,nidep)
++                  call hetero(tc,wbar2,eff_inp_num,niimm,nidep)
+ 
+                   nihf = 0._r8
+                   n1   = niimm + nidep
+                   
+-                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num) 
+-                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num) 
++                  if (eff_inp_num > 0._r8) then
++                     osoot_num = soot_num * (niimm + nidep) / eff_inp_num
++                     odst_num  = dst_num  * (niimm + nidep) / eff_inp_num
++                  end if
+                endif
+ 
+             ! homogeneous nucleation only
+@@ -303,7 +314,7 @@ subroutine nucleati(  &
+                else
+ 
+                   call hf(regm-5._r8,wbar1,relhum*subgrid,so4_num,nihf)
+-                  call hetero(regm,wbar2,soot_num+dst_num,niimm,nidep)
++                  call hetero(regm,wbar2,eff_inp_num,niimm,nidep)
+ 
+                   ! If some homogeneous nucleation happened, assume all of the
+                   ! heterogeneous particles nucleated and add in a fraction of
+@@ -312,8 +323,10 @@ subroutine nucleati(  &
+                      oso4_num  = nihf
+                   endif
+                      
+-                  osoot_num = soot_num * (niimm + nidep) / (soot_num + dst_num)
+-                  odst_num  = dst_num  * (niimm + nidep) / (soot_num + dst_num)
++                  if (eff_inp_num > 0._r8) then
++                     osoot_num = soot_num * (niimm + nidep) / eff_inp_num
++                     odst_num  = dst_num  * (niimm + nidep) / eff_inp_num
++                  end if
+ 
+                   nihf      = nihf      * fhom * ((regm - tc) / 5._r8)**2
+                   oso4_num  = oso4_num  * fhom * ((regm - tc) / 5._r8)**2

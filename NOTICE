@@ -1,0 +1,8 @@
+The files in patches/ modify source code of the Community Earth System Model
+version 2 (CESM2) and its atmosphere component CAM6, copyright University
+Corporation for Atmospheric Research (UCAR). The unmodified CESM2 code is
+distributed under the CESM2 copyright notice and terms of use:
+https://www.cesm.ucar.edu/models/cesm2/copyright
+
+The BSD 3-Clause License in LICENSE applies to the changes made in this
+repository (patch content, scripts, namelists and documentation).
