@@ -148,3 +148,9 @@ Please cite Villanueva et al. (in review) and this software (`CITATION.cff`). A 
 ## Contact
 
 Diego Villanueva, Institute for Atmospheric and Climate Science, ETH Zurich (GitHub: diegovillanueva).
+
+## Related repositories
+
+- [mg2_limiter_update](https://github.com/diegovillanueva/mg2_limiter_update): the limiter for MG2 microphysics (CESM 2.1.5 default).
+- [PUMAS_interface_215](https://github.com/diegovillanueva/PUMAS_interface_215): CAM patches that let CESM 2.1.5 run PUMAS.
+- [pumas_limiter_update](https://github.com/diegovillanueva/pumas_limiter_update): the limiter for PUMAS, applied on top of PUMAS_interface_215.
