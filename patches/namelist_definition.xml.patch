@@ -16,7 +16,7 @@ index 37a5690..bcee56b 100644
 +
 +<entry id="naai_het_also_in_mpc" type="logical" category="microphys"
 +       group="micro_dv_nl" valid_values="" >
-+If .false., the naai ice number adjustment is restricted to T < 233.15 K
++If .false., the naai ice number adjustment is restricted to temperatures below 233.15 K
 +(no deposition nucleation adjustment in mixed-phase clouds).
 +Default: .true.
 +</entry>

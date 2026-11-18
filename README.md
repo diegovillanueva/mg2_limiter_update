@@ -143,7 +143,7 @@ Model output of the runs is available from the author on request.
 
 The changes in this repository are released under the BSD 3-Clause License (`LICENSE`). The patches modify CESM2/CAM6 source code, copyright UCAR, which remains under the CESM2 terms of use; see `NOTICE`.
 
-Please cite Villanueva et al. (in review) and this software (`CITATION.cff`). A Zenodo DOI is minted for release v1.0.0.
+Please cite Villanueva et al. (in review) and this software (`CITATION.cff`). A Zenodo DOI is minted for release v1.0.1.
 
 ## Contact
 

@@ -1,6 +1,6 @@
 {
   "title": "Reconciling droplet freezing parameterizations with cloud top phase and ice number observations: code and run configurations",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "upload_type": "software",
   "license": "BSD-3-Clause",
   "creators": [
