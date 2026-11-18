@@ -41,7 +41,7 @@ The pins are in `versions.env`.
 | DustOnly-NieCont | dust only | Niemand, every step | off | none |
 
 The rows match Table 1 of Villanueva et al. (in review). Cap: MG2 ice-number cap (`enable_nimax`). Limiter: fraction of the cloud-borne dust that may freeze per call (`limfacdu`, CNT runs only); the Niemand runs allow a frozen fraction of up to 100 % (`limfacdu_niemand_max = 100`), and `limfacdu` is not used when a Niemand switch is set.
-The last two rows are the long nudged runs of Fig. 3 (start 1979-01-01, create them with `RUN_STARTDATE=1979-01-01`): DustOnly-NieSing, and the same run with dust immersion freezing switched off (`hclas_du_imm = 0`). Fig. 3 uses the COSP fields `CLD_CAL_TMPICE` and `CLD_CAL_TMPLIQ`. Stock `cam_cesm2_1_rel_60` writes these two fields swapped (ice in `CLD_CAL_TMPLIQ`). The Fig. 3 runs were built with the fix, which ships in the `cospsimulator_intr.F90` patch of [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) v1.0.0; apply it to reproduce them, or swap the two fields when you use this patch set alone. the model cloud-top diagnostics of the Supporting Information (`ctd_*` namelist variables) come from the patch set in [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) and are left out of these two namelists.
+The last two rows are the long nudged runs of Fig. 3 (start 1979-01-01, create them with `RUN_STARTDATE=1979-01-01`): DustOnly-NieSing, and the same run with dust immersion freezing switched off (`hclas_du_imm = 0`). Fig. 3 uses the COSP fields `CLD_CAL_TMPICE` and `CLD_CAL_TMPLIQ`. Stock `cam_cesm2_1_rel_60` writes these two fields swapped (ice in `CLD_CAL_TMPLIQ`). The Fig. 3 runs were built with the fix, which ships in the `cospsimulator_intr.F90` patch of [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) v1.0.0; apply it to reproduce them, or swap the two fields when you use this patch set alone. The model cloud-top diagnostics of the Supporting Information (`ctd_*` namelist variables) come from the patch set in [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) and are left out of these two namelists.
 
 All DustOnly runs set the same block of switches: dust immersion freezing is the only heterogeneous mixed-phase ice source (other `hclas_*` factors zero, no Hallett-Mossop, no contact or rain freezing, `micro_mg_num_steps = 8`).
 
@@ -128,12 +128,9 @@ git ls-files | grep -v '^SHA256SUMS$' | sort | xargs sha256sum > SHA256SUMS
 
 and is verified with `sha256sum -c SHA256SUMS`.
 
-## Related repositories
+## Versions and releases
 
-| Repository | Content | Relation to this one |
-|---|---|---|
-| [Sppe_revision_public](https://github.com/diegovillanueva/Sppe_revision_public) | the 20 SPPE microphysics controls | this repository extends it |
-| [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) | COSP every time step, CALIPSO/CloudSat and MG2 cloud-top diagnostics | applies on top of this patch set |
+Release v1.0.2 of mg2_limiter_update and release v1.0.1 of PUMAS_interface_215 change only documentation and metadata; their code is identical to mg2_limiter_update v1.0.1 and PUMAS_interface_215 v1.0.0. Pins to those two code versions in sibling repositories therefore remain valid.
 
 ## Data availability
 
@@ -143,7 +140,7 @@ Model output of the runs is available from the author on request.
 
 The changes in this repository are released under the BSD 3-Clause License (`LICENSE`). The patches modify CESM2/CAM6 source code, copyright UCAR, which remains under the CESM2 terms of use; see `NOTICE`.
 
-Please cite Villanueva et al. (in review) and this software (`CITATION.cff`). A Zenodo DOI is minted for release v1.0.1. Release v1.0.1 changed only `patches/namelist_definition.xml.patch` (XML fix); the code patches are identical to v1.0.0.
+Please cite Villanueva et al. (in review) and this software via the Zenodo DOI of the release (metadata in `CITATION.cff`). A Zenodo DOI is minted for release v1.0.2, which changes only documentation and metadata; its code is identical to v1.0.1. Release v1.0.1 changed only `patches/namelist_definition.xml.patch` (XML fix); the code patches are identical to v1.0.0.
 
 ## Contact
 
@@ -151,6 +148,6 @@ Diego Villanueva, Institute for Atmospheric and Climate Science, ETH Zurich (Git
 
 ## Related repositories
 
-- [mg2_limiter_update](https://github.com/diegovillanueva/mg2_limiter_update): the limiter for MG2 microphysics (CESM 2.1.5 default).
+- [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag): COSP, CALIPSO/CloudSat and cloud-top diagnostics, including the fix of the swapped `CLD_CAL_TMPLIQ`/`CLD_CAL_TMPICE` fields.
 - [PUMAS_interface_215](https://github.com/diegovillanueva/PUMAS_interface_215): CAM patches that let CESM 2.1.5 run PUMAS.
-- [pumas_limiter_update](https://github.com/diegovillanueva/pumas_limiter_update): the limiter for PUMAS, applied on top of PUMAS_interface_215.
+- [pumas_limiter_update](https://github.com/diegovillanueva/pumas_limiter_update): the droplet freezing limiter for PUMAS, applied on top of PUMAS_interface_215.
