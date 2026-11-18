@@ -41,7 +41,7 @@ The pins are in `versions.env`.
 | DustOnly-NieCont | dust only | Niemand, every step | off | none |
 
 The rows match Table 1 of Villanueva et al. (in review). Cap: MG2 ice-number cap (`enable_nimax`). Limiter: fraction of the cloud-borne dust that may freeze per call (`limfacdu`, CNT runs only); the Niemand runs allow a frozen fraction of up to 100 % (`limfacdu_niemand_max = 100`), and `limfacdu` is not used when a Niemand switch is set.
-The last two rows are the long nudged runs of Fig. 3 (start 1979-01-01, create them with `RUN_STARTDATE=1979-01-01`): DustOnly-NieSing, and the same run with dust immersion freezing switched off (`hclas_du_imm = 0`). Fig. 3 uses the standard COSP fields `CLD_CAL_TMPICE` and `CLD_CAL_TMPLIQ`; the model cloud-top diagnostics of the Supporting Information (`ctd_*` namelist variables) come from the patch set in [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) and are left out of these two namelists.
+The last two rows are the long nudged runs of Fig. 3 (start 1979-01-01, create them with `RUN_STARTDATE=1979-01-01`): DustOnly-NieSing, and the same run with dust immersion freezing switched off (`hclas_du_imm = 0`). Fig. 3 uses the COSP fields `CLD_CAL_TMPICE` and `CLD_CAL_TMPLIQ`. Stock `cam_cesm2_1_rel_60` writes these two fields swapped (ice in `CLD_CAL_TMPLIQ`). The Fig. 3 runs were built with the fix, which ships in the `cospsimulator_intr.F90` patch of [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) v1.0.0; apply it to reproduce them, or swap the two fields when you use this patch set alone. the model cloud-top diagnostics of the Supporting Information (`ctd_*` namelist variables) come from the patch set in [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) and are left out of these two namelists.
 
 All DustOnly runs set the same block of switches: dust immersion freezing is the only heterogeneous mixed-phase ice source (other `hclas_*` factors zero, no Hallett-Mossop, no contact or rain freezing, `micro_mg_num_steps = 8`).
 
@@ -143,7 +143,7 @@ Model output of the runs is available from the author on request.
 
 The changes in this repository are released under the BSD 3-Clause License (`LICENSE`). The patches modify CESM2/CAM6 source code, copyright UCAR, which remains under the CESM2 terms of use; see `NOTICE`.
 
-Please cite Villanueva et al. (in review) and this software (`CITATION.cff`). A Zenodo DOI is minted for release v1.0.1.
+Please cite Villanueva et al. (in review) and this software (`CITATION.cff`). A Zenodo DOI is minted for release v1.0.1. Release v1.0.1 changed only `patches/namelist_definition.xml.patch` (XML fix); the code patches are identical to v1.0.0.
 
 ## Contact
 
