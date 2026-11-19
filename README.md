@@ -132,10 +132,6 @@ git ls-files | grep -v '^SHA256SUMS$' | sort | xargs sha256sum > SHA256SUMS
 
 and is verified with `sha256sum -c SHA256SUMS`.
 
-## Versions and releases
-
-Release v1.0.2 of mg2_limiter_update and release v1.0.1 of PUMAS_interface_215 change only documentation and metadata; their code is identical to mg2_limiter_update v1.0.1 and PUMAS_interface_215 v1.0.0. Pins to those two code versions in sibling repositories therefore remain valid.
-
 ## Data availability
 
 Model output of the runs is available from the author on request.
@@ -144,7 +140,7 @@ Model output of the runs is available from the author on request.
 
 The changes in this repository are released under the BSD 3-Clause License (`LICENSE`). The patches modify CESM2/CAM6 source code, copyright UCAR, which remains under the CESM2 terms of use; see `NOTICE`.
 
-Please cite Villanueva et al. (in review) and this software via the Zenodo DOI of the release (metadata in `CITATION.cff`). A Zenodo DOI is minted for release v1.0.2, which changes only documentation and metadata; its code is identical to v1.0.1. Release v1.0.1 changed only `patches/namelist_definition.xml.patch` (XML fix); the code patches are identical to v1.0.0.
+Please cite Villanueva et al. (in review) and this software via the Zenodo DOI of the release (metadata in `CITATION.cff`).
 
 ## Contact
 
