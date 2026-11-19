@@ -51,7 +51,7 @@ All DustOnly runs set the same block of switches: dust immersion freezing is the
 
 ### INP-factor members
 
-Every run of Table 1 has members at five INP factors, 10⁻⁴, 10⁻², 1, 10² and 10⁴ (Default-NoCap: factor 1 only in the original runs). The factor multiplies the dust immersion freezing rate through the namelist variable `hclas_du_imm` (in all runs, including Default, where it is the only change from the stock namelist). To create a member, set `INP_FACTOR` when calling `create_case.sh`, for example `INP_FACTOR=1e-4`; the script replaces the `hclas_du_imm` line of the run's `user_nl_cam`.
+Every run of Table 1 has members at five INP factors, 10⁻⁴, 10⁻², 1, 10² and 10⁴. The factor multiplies the dust immersion freezing rate through the namelist variable `hclas_du_imm` (in all runs, including Default, where it is the only change from the stock namelist). To create a member, set `INP_FACTOR` when calling `create_case.sh`, for example `INP_FACTOR=1e-4`; the script replaces the `hclas_du_imm` line of the run's `user_nl_cam`.
 
 ### Run length
 
