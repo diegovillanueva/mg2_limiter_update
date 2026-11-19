@@ -10,6 +10,10 @@ It extends [Sppe_revision_public](https://github.com/diegovillanueva/Sppe_revisi
 
 The default branch `main` holds the minimal patch set: only the code that the run namelists use (11 patches, 23 namelist variables). The branch `full-dv-diag` (tag `v0-full-dv-diag`) holds the complete export of `dv_diag`, the author's CAM development branch (19 patches).
 
+## CALIPSO cloud-top phase fields
+
+Stock CAM 6 COSP (`cam_cesm2_1_rel_60`) writes `CLD_CAL_TMPLIQ` and `CLD_CAL_TMPICE` swapped: in COSP2, `lidarcldtmp` index 2 is ice and index 3 is liquid, but stock CAM maps them the other way. This repository does not modify COSP, so runs built from it alone write swapped fields (ice in `CLD_CAL_TMPLIQ`); swap the two fields back in your analysis. The fix is the `cospsimulator_intr.F90` patch of [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) (v1.0.0); the Fig. 3 runs were built with it.
+
 ## Requirements
 
 - A CESM 2.1.5 installation ported to your machine (`release-cesm2.1.5`, see the CESM documentation for porting), with its standard input data (F2000climo, f09_g17).
@@ -41,7 +45,7 @@ The pins are in `versions.env`.
 | DustOnly-NieCont | dust only | Niemand, every step | off | none |
 
 The rows match Table 1 of Villanueva et al. (in review). Cap: MG2 ice-number cap (`enable_nimax`). Limiter: fraction of the cloud-borne dust that may freeze per call (`limfacdu`, CNT runs only); the Niemand runs allow a frozen fraction of up to 100 % (`limfacdu_niemand_max = 100`), and `limfacdu` is not used when a Niemand switch is set.
-The last two rows are the long nudged runs of Fig. 3 (start 1979-01-01, create them with `RUN_STARTDATE=1979-01-01`): DustOnly-NieSing, and the same run with dust immersion freezing switched off (`hclas_du_imm = 0`). Fig. 3 uses the COSP fields `CLD_CAL_TMPICE` and `CLD_CAL_TMPLIQ`. Stock `cam_cesm2_1_rel_60` writes these two fields swapped (ice in `CLD_CAL_TMPLIQ`). The Fig. 3 runs were built with the fix, which ships in the `cospsimulator_intr.F90` patch of [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) v1.0.0; apply it to reproduce them, or swap the two fields when you use this patch set alone. The model cloud-top diagnostics of the Supporting Information (`ctd_*` namelist variables) come from the patch set in [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) and are left out of these two namelists.
+The last two rows are the long nudged runs of Fig. 3 (start 1979-01-01, create them with `RUN_STARTDATE=1979-01-01`): DustOnly-NieSing, and the same run with dust immersion freezing switched off (`hclas_du_imm = 0`). Fig. 3 uses the COSP fields `CLD_CAL_TMPICE` and `CLD_CAL_TMPLIQ`; apply the COSP fix to reproduce it (see [CALIPSO cloud-top phase fields](#calipso-cloud-top-phase-fields)). The model cloud-top diagnostics of the Supporting Information (`ctd_*` namelist variables) come from the patch set in [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) and are left out of these two namelists.
 
 All DustOnly runs set the same block of switches: dust immersion freezing is the only heterogeneous mixed-phase ice source (other `hclas_*` factors zero, no Hallett-Mossop, no contact or rain freezing, `micro_mg_num_steps = 8`).
 
