@@ -1,9 +1,10 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using the metadata from this file."
 title: "Reconciling droplet freezing parameterizations with cloud top phase and ice number observations: code and run configurations"
-version: 1.0.2
-abstract: "Patches against CAM tag cam_cesm2_1_rel_60 of CESM 2.1.5 that add a droplet freezing limiter for mineral dust (limfacdu), the Niemand et al. (2012) dust immersion freezing schemes, a switch for the MG2 ice-number cap and related microphysics factors and diagnostics. The repository also contains the run namelists and case scripts of the CESM2/CAM6 (MG2) simulations of Villanueva et al. (in review). Release 1.0.2 changes only documentation and metadata; the code is identical to release 1.0.1."
-date-released: 2026-11-18
+version: 1.0.3
+abstract: "Patches against CAM tag cam_cesm2_1_rel_60 of CESM 2.1.5 that add a droplet freezing limiter for mineral dust (limfacdu), the Niemand et al. (2012) dust immersion freezing schemes, a switch for the MG2 ice-number cap and related microphysics factors and diagnostics. The repository also contains the run namelists and case scripts of the CESM2/CAM6 (MG2) simulations of Villanueva et al. (in review). Release 1.0.3 changes only documentation and metadata; the code is identical to release 1.0.1."
+date-released: 2026-11-19
+doi: "10.5281/zenodo.24365669"
 license: BSD-3-Clause
 repository-code: "https://github.com/diegovillanueva/mg2_limiter_update"
 authors:

@@ -1,7 +1,7 @@
 {
   "title": "Reconciling droplet freezing parameterizations with cloud top phase and ice number observations: code and run configurations",
-  "description": "Patches against CAM tag cam_cesm2_1_rel_60 of CESM 2.1.5 that add a droplet freezing limiter for mineral dust (limfacdu), the Niemand et al. (2012) dust immersion freezing schemes, a switch for the MG2 ice-number cap and related microphysics factors and diagnostics. The repository also contains the run namelists and case scripts of the CESM2/CAM6 (MG2) simulations of Villanueva et al. (in review). Release 1.0.2 changes only documentation and metadata; the code is identical to release 1.0.1.",
-  "version": "1.0.2",
+  "description": "Patches against CAM tag cam_cesm2_1_rel_60 of CESM 2.1.5 that add a droplet freezing limiter for mineral dust (limfacdu), the Niemand et al. (2012) dust immersion freezing schemes, a switch for the MG2 ice-number cap and related microphysics factors and diagnostics. The repository also contains the run namelists and case scripts of the CESM2/CAM6 (MG2) simulations of Villanueva et al. (in review). Release 1.0.3 changes only documentation and metadata; the code is identical to release 1.0.1.",
+  "version": "1.0.3",
   "upload_type": "software",
   "license": "BSD-3-Clause",
   "access_right": "open",
@@ -22,29 +22,39 @@
   ],
   "related_identifiers": [
     {
+      "identifier": "https://github.com/diegovillanueva/mg2_limiter_update/tree/v1.0.3",
+      "relation": "isIdenticalTo",
+      "scheme": "url"
+    },
+    {
       "identifier": "10.1029/2019MS001916",
       "relation": "references",
       "scheme": "doi"
     },
     {
-      "identifier": "https://github.com/diegovillanueva/cam6_cosp_calipso_diag",
-      "relation": "isSupplementedBy",
-      "scheme": "url"
-    },
-    {
-      "identifier": "https://github.com/diegovillanueva/pumas_limiter_update",
-      "relation": "isSupplementedBy",
-      "scheme": "url"
-    },
-    {
-      "identifier": "https://github.com/diegovillanueva/PUMAS_interface_215",
-      "relation": "isSupplementedBy",
-      "scheme": "url"
-    },
-    {
       "identifier": "https://github.com/diegovillanueva/Sppe_revision_public",
       "relation": "isDerivedFrom",
       "scheme": "url"
+    },
+    {
+      "identifier": "10.5281/zenodo.24365675",
+      "relation": "references",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.5281/zenodo.24365680",
+      "relation": "references",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.5281/zenodo.24365685",
+      "relation": "references",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.5281/zenodo.24365774",
+      "relation": "isSupplementTo",
+      "scheme": "doi"
     }
   ]
 }

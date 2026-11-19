@@ -12,7 +12,7 @@ The default branch `main` holds the minimal patch set: only the code that the ru
 
 ## CALIPSO cloud-top phase fields
 
-Stock CAM 6 COSP (`cam_cesm2_1_rel_60`) writes `CLD_CAL_TMPLIQ` and `CLD_CAL_TMPICE` swapped: in COSP2, `lidarcldtmp` index 2 is ice and index 3 is liquid, but stock CAM maps them the other way. This repository does not modify COSP, so runs built from it alone write swapped fields (ice in `CLD_CAL_TMPLIQ`); swap the two fields back in your analysis. The fix is the `cospsimulator_intr.F90` patch of [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) (v1.0.0); the Fig. 3 runs were built with it.
+Stock CAM 6 COSP (`cam_cesm2_1_rel_60`) writes `CLD_CAL_TMPLIQ` and `CLD_CAL_TMPICE` swapped: in COSP2, `lidarcldtmp` index 2 is ice and index 3 is liquid, but stock CAM maps them the other way. This repository does not modify COSP, so runs built from it alone write swapped fields (ice in `CLD_CAL_TMPLIQ`); swap the two fields back in your analysis. The fix is the `cospsimulator_intr.F90` patch of [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) (v1.0.1); the Fig. 3 runs were built with it.
 
 ## Requirements
 
@@ -140,7 +140,7 @@ Model output of the runs is available from the author on request.
 
 The changes in this repository are released under the BSD 3-Clause License (`LICENSE`). The patches modify CESM2/CAM6 source code, copyright UCAR, which remains under the CESM2 terms of use; see `NOTICE`.
 
-Please cite Villanueva et al. (in review) and this software via the Zenodo DOI of the release (metadata in `CITATION.cff`).
+Please cite Villanueva et al. (in review) and this software, [doi:10.5281/zenodo.24365669](https://doi.org/10.5281/zenodo.24365669) (metadata in `CITATION.cff`).
 
 ## Contact
 
@@ -148,6 +148,6 @@ Diego Villanueva, Institute for Atmospheric and Climate Science, ETH Zurich (Git
 
 ## Related repositories
 
-- [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag): COSP, CALIPSO/CloudSat and cloud-top diagnostics, including the fix of the swapped `CLD_CAL_TMPLIQ`/`CLD_CAL_TMPICE` fields.
-- [PUMAS_interface_215](https://github.com/diegovillanueva/PUMAS_interface_215): CAM patches that let CESM 2.1.5 run PUMAS.
-- [pumas_limiter_update](https://github.com/diegovillanueva/pumas_limiter_update): the droplet freezing limiter for PUMAS, applied on top of PUMAS_interface_215.
+- [cam6_cosp_calipso_diag](https://github.com/diegovillanueva/cam6_cosp_calipso_diag) ([doi:10.5281/zenodo.24365675](https://doi.org/10.5281/zenodo.24365675)): COSP, CALIPSO/CloudSat and cloud-top diagnostics, including the fix of the swapped `CLD_CAL_TMPLIQ`/`CLD_CAL_TMPICE` fields.
+- [PUMAS_interface_215](https://github.com/diegovillanueva/PUMAS_interface_215) ([doi:10.5281/zenodo.24365680](https://doi.org/10.5281/zenodo.24365680)): CAM patches that let CESM 2.1.5 run PUMAS.
+- [pumas_limiter_update](https://github.com/diegovillanueva/pumas_limiter_update) ([doi:10.5281/zenodo.24365685](https://doi.org/10.5281/zenodo.24365685)): the droplet freezing limiter for PUMAS, applied on top of PUMAS_interface_215.
